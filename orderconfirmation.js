@@ -1,398 +1,238 @@
-/* orderconfirmation.js
- * Mirrors the structure used in transmittalreceipt.js.
- * Handles initialization, dropdown wiring, product selection,
- * table management, and submission for the Order Confirmation page.
- */
-
-let orderItemsTbl;
-let selectedRow = null;
-let orderItemData = [];
-let cachedTypesByBranch = {};
-let cachedCategoriesByType = {};
-let cachedItemsBySelection = {};
-let cachedSINoByItem = {};
-let currentSelectMode = "";
-let currentOrderNo = "";
-let productSummary = {};
-let quantityInput = 0;
-
 $(document).ready(function () {
-    initializeOrderConfirmation();
-    bindEventHandlers();
-});
+  $("#category").select2({ width: "100%" });
+  $("#itemSelect").select2({ width: "100%" });
+  $("#SIno").select2({ width: "100%" });
 
-/* -------------------------------------------------------------------------- */
-/* Initialization                                                             */
-/* -------------------------------------------------------------------------- */
-function initializeOrderConfirmation() {
-    $.ajax({
-        url: "../../routes/inventorymanagement/orderconfirmation.route.php",
+  $("#quantityInput").on("input", function () {
+    var quantity = parseFloat($("#quantityInput").val()) || 0;
+    var srp = parseFloat($("#srpDisplay").val()) || 0;
+    var editSRP = quantity * srp;
+    $("#editSRP").val(editSRP.toFixed(2));
+  });
+
+  $("#editSRPtoggle").on("change", function () {
+    if (!this.checked) {
+      $("#editSRP").prop("disabled", true);
+    } else {
+      $("#editSRP").prop("disabled", false);
+    }
+  });
+
+  $("input[name='inlineRadioOptions']").on("change", function () {
+    var type = $(this).val();
+    var category = $("#category").val();
+    var selectElement = $("#itemSelect");
+    if (type && category) {
+      $.ajax({
         type: "POST",
-        data: { action: "Initialize" },
-        dataType: "JSON",
-        beforeSend() {
-            disableFormControls();
+        url: "./ajax-inventory/fetch_items.php",
+        data: { type: type, category: category },
+        success: function (response) {
+          var data = JSON.parse(response);
+          selectElement.empty();
+          selectElement.append('<option selected disabled>Select</option>');
+          $.each(data.options, function (index, option) {
+            selectElement.append('<option value="' + option + '">' + option + "</option>");
+          });
         },
-        success(response) {
-            currentOrderNo = response.order_no || "";
-            $("#order_no").val(currentOrderNo);
-
-            populateSelect("#isynBranch", response.branches);
-            cachedTypesByBranch = response.types || {};
-            cachedCategoriesByType = response.categories || {};
-
-            setupDataTable();
-            enableFormControls();
+        error: function () {
+          console.error("Error fetching items");
         },
-        error(err) {
-            console.error("Initialize error", err);
-            Swal.fire({ icon: "error", title: "Initialization failed" });
-        }
-    });
-}
-
-function disableFormControls() {
-    $("#addButton, #submit-btn, #cancel-btn").prop("disabled", true);
-    $("form input, form select, form button").prop("disabled", true);
-}
-
-function enableFormControls() {
-    $("#addButton").prop("disabled", false);
-    $("form input, form select, form button").prop("disabled", false);
-    $("#order_no").prop("disabled", true);
-    $("#sender").prop("readonly", true);
-    $("#submit-btn").prop("disabled", true);
-    $("#cancel-btn").prop("disabled", true);
-}
-
-/* -------------------------------------------------------------------------- */
-/* Event Binding                                                              */
-/* -------------------------------------------------------------------------- */
-function bindEventHandlers() {
-    $("#isynBranch").on("change", handleBranchChange);
-    $("#type").on("change", handleTypeChange);
-    $("#category").on("change", handleCategoryChange);
-    $("input[name='inlineRadioOptions']").on("change", handleSelectModeChange);
-    $("#itemSelect").on("change", handleItemChange);
-    $("#SIno").on("change", handleSINoChange);
-    $("#quantityInput").on("input", handleQuantityInput);
-    $("#editSRPtoggle").on("click", toggleEditSRP);
-
-    $("#addButton").on("click", addItemToTable);
-    $("#cancelProduct").on("click", cancelSingleProduct);
-    $("#submit-btn").on("click", submitOrderConfirmation);
-    $("#cancel-btn").on("click", resetForms);
-
-    $("#searchTransmittalBtn").on("click", openTransmittalModal);
-}
-
-/* -------------------------------------------------------------------------- */
-/* Dropdown Flow                                                              */
-/* -------------------------------------------------------------------------- */
-function populateSelect(selector, options, placeholder = "Select") {
-    const $el = $(selector);
-    $el.empty().append(`<option value="" disabled selected>${placeholder}</option>`);
-    if (!options) return;
-    options.forEach(opt => {
-        $el.append(`<option value="${opt.value || opt}">${opt.label || opt}</option>`);
-    });
-}
-
-function handleBranchChange() {
-    const branch = $(this).val();
-    const types = cachedTypesByBranch[branch] || [];
-    populateSelect("#type", types, "Select Type");
-    resetSelects(["#category", "#itemSelect", "#SIno"]);
-    resetProductSummary();
-}
-
-function handleTypeChange() {
-    const type = $(this).val();
-    const categories = cachedCategoriesByType[type] || [];
-    populateSelect("#category", categories, "Select Category");
-    resetSelects(["#itemSelect", "#SIno"]);
-    resetProductSummary();
-}
-
-function handleCategoryChange() {
-    const category = $(this).val();
-    currentSelectMode = $("input[name='inlineRadioOptions']:checked").val();
-    if (!currentSelectMode) {
-        $("#itemSelect").empty().append(`<option value="" disabled selected>Select mode first</option>`);
-        return;
+      });
     }
-    fetchItemOptions(category, currentSelectMode);
-}
+  });
 
-function handleSelectModeChange() {
-    currentSelectMode = $(this).val();
-    $("#itemSelect").empty().append(`<option value="" disabled selected>Select</option>`);
-    $("#SIno").empty().append(`<option value="" disabled selected>Select</option>`);
-    resetProductSummary();
-    if ($("#category").val()) {
-        fetchItemOptions($("#category").val(), currentSelectMode);
-    }
-}
-
-function handleItemChange() {
-    const selected = $(this).val();
-    if (!selected) return;
-    const siList = cachedSINoByItem[selected] || [];
-    populateSelect("#SIno", siList, "Select SI No");
-    resetProductSummary();
-}
-
-function handleSINoChange() {
-    const siNo = $(this).val();
-    if (!siNo) return;
-    fetchProductSummary(siNo);
-}
-
-function resetSelects(selectors) {
-    selectors.forEach(sel => {
-        $(sel).empty().append(`<option value="" disabled selected>Select</option>`);
-    });
-}
-
-function fetchItemOptions(category, mode) {
-    const branch = $("#isynBranch").val();
-    const type = $("#type").val();
-    if (!branch || !type || !category || !mode) return;
-
-    $.ajax({
-        url: "../../routes/inventorymanagement/orderconfirmation.route.php",
+  $("#itemSelect").on("change", function () {
+    var selectedOption = $(this).val();
+    var category = $("#category").val();
+    var type = $("input[name='inlineRadioOptions']:checked").val();
+    if (selectedOption && category && type) {
+      $.ajax({
         type: "POST",
-        data: {
-            action: "FetchItems",
-            branch,
-            type,
-            category,
-            mode
+        url: "./ajax-inventory/fetch_items.php",
+        data: { selectedOption: selectedOption, category: category, type: type },
+        success: function (response) {
+          var data = JSON.parse(response);
+          var siSelectElement = $("#SIno");
+          siSelectElement.empty();
+          siSelectElement.append('<option selected disabled>Select</option>');
+          $.each(data.SIno, function (index, option) {
+            siSelectElement.append('<option value="' + option + '">' + option + "</option>");
+          });
         },
-        dataType: "JSON",
-        success(response) {
-            const { items = [], siNoMap = {} } = response;
-            cachedItemsBySelection = items;
-            cachedSINoByItem = siNoMap;
-            populateSelect("#itemSelect", items, "Select");
-            $("#SIno").empty().append(`<option value="" disabled selected>Select</option>`);
-        }
-    });
-}
+        error: function () {
+          console.error("Error fetching SI numbers");
+        },
+      });
+    }
+  });
 
-/* -------------------------------------------------------------------------- */
-/* Product Summary                                                            */
-/* -------------------------------------------------------------------------- */
-function fetchProductSummary(siNo) {
+  $("#SIno").on("change", function () {
+    var selectedSIno = $(this).val();
     $.ajax({
-        url: "../../routes/inventorymanagement/orderconfirmation.route.php",
-        type: "POST",
-        data: { action: "ProductSummary", siNo },
-        dataType: "JSON",
-        success(response) {
-            productSummary = response || {};
-            populateProductSummary(productSummary);
-        }
-    });
-}
-
-function populateProductSummary(summary) {
-    $("#supplierSIdisplay").val(summary.SIno || "");
-    $("#serialNodisplay").val(summary.Serialno || "");
-    $("#productDisplay").val(summary.product || "");
-    $("#supplierDisplay").val(summary.Supplier || "");
-    $("#srpDisplay").val(summary.SRP || "");
-    $("#quantityDisplay").val(summary.Quantity || "");
-    $("#delearsPriceDisplay").val(summary.DealerPrice || "");
-    $("#totalPriceDisplay").val(summary.TotalPrice || "");
-    $("#warranty").val(summary.Warranty || "");
-    $("#vat").val(summary.Vat || "");
-    $("#vatsales").val(summary.VatSales || "");
-    $("#editSRP").val("");
-    $("#quantityInput").val("");
-    $("#submit-btn").prop("disabled", true);
-}
-
-function resetProductSummary() {
-    populateProductSummary({});
-}
-
-/* -------------------------------------------------------------------------- */
-/* Quantity / SRP                                                             */
-/* -------------------------------------------------------------------------- */
-function handleQuantityInput() {
-    quantityInput = parseFloat($(this).val()) || 0;
-    if (!productSummary.SRP) {
-        $("#editSRP").val("");
-        return;
-    }
-    const total = quantityInput * parseFloat(productSummary.SRP);
-    $("#editSRP").val(total ? total.toFixed(2) : "");
-}
-
-function toggleEditSRP() {
-    const enabled = $(this).is(":checked");
-    $("#editSRP").prop("disabled", !enabled);
-    if (!enabled) {
-        $("#editSRP").val("");
-    }
-}
-
-/* -------------------------------------------------------------------------- */
-/* DataTable                                                                  */
-/* -------------------------------------------------------------------------- */
-function setupDataTable() {
-    orderItemsTbl = $("#table1").DataTable({
-        searching: false,
-        ordering: false,
-        paging: false,
-        lengthChange: false,
-        info: false,
-        scrollY: "300px",
-        scrollX: true,
-        scrollCollapse: true,
-        responsive: false
-    });
-
-    $("#table1 tbody").on("click", "tr", function () {
-        if (!orderItemsTbl) return;
-        if ($(this).hasClass("selected")) {
-            $(this).removeClass("selected");
-            selectedRow = null;
-            $("#cancel-btn").prop("disabled", true);
+      type: "POST",
+      url: "./ajax-inventory/product-summary.php",
+      data: { SIno: selectedSIno },
+      dataType: "json",
+      success: function (productSummary) {
+        if (productSummary.error) {
+          Swal.fire({ icon: "error", title: productSummary.error });
         } else {
-            orderItemsTbl.$("tr.selected").removeClass("selected");
-            $(this).addClass("selected");
-            selectedRow = this;
-            $("#cancel-btn").prop("disabled", false);
+          $("#serialNodisplay").val(productSummary.Serialno);
+          $("#supplierSIdisplay").val(productSummary.SIno);
+          $("#productDisplay").val(productSummary.product);
+          $("#supplierDisplay").val(productSummary.Supplier);
+          $("#srpDisplay").val(productSummary.SRP);
+          $("#quantityDisplay").val(productSummary.Quantity);
+          $("#delearsPriceDisplay").val(productSummary.DealerPrice);
+          $("#totalPriceDisplay").val(productSummary.TotalPrice);
+          $("#warranty").val(productSummary.Warranty);
+          $("#vat").val(productSummary.Vat);
+          $("#vatsales").val(productSummary.VatSales);
         }
+      },
+      error: function () {
+        Swal.fire({ icon: "error", title: "Error fetching product summary" });
+      },
     });
-}
+  });
 
-/* -------------------------------------------------------------------------- */
-/* Table / Item Handling                                                      */
-/* -------------------------------------------------------------------------- */
-function addItemToTable(e) {
-    e.preventDefault();
+  $("#addButton").on("click", function () {
+    var quantity = $("#quantityInput").val();
+    var srp = $("#editSRP").val();
+    var datePrepared = new Date().toLocaleDateString();
+    var SIno = $("#SIno").val();
+    var serialno = $("#serialNodisplay").val();
+    var product = $("#productDisplay").val();
+    var category = $("#category").val();
+    var type = $("#type").val();
+    var branch = $("#isynBranch").val();
+    var supplier = $("#supplierDisplay").val();
+    var warranty = $("#warranty").val();
+    var vat = $("#vat").val();
+    var vatsales = $("#vatsales").val();
 
-    const product = $("#productDisplay").val();
-    const quantity = $("#quantityInput").val();
-    const srp = $("#editSRP").val() || $("#srpDisplay").val();
-    const siNo = $("#SIno").val();
-    const serial = $("#serialNodisplay").val();
-    const category = $("#category").val();
-    const type = $("#type").val();
-    const branch = $("#isynBranch").val();
-    const supplier = $("#supplierDisplay").val();
-    const vat = $("#vat").val();
-    const vatSales = $("#vatsales").val();
-    const warranty = $("#warranty").val();
-    const datePrepared = new Date().toLocaleDateString();
-
-    if (!product || !quantity || !srp || !siNo) {
-        Swal.fire({ icon: "warning", title: "Please complete product info" });
-        return;
+    if (!branch || !type || !category || !product || !SIno) {
+      Swal.fire({ icon: "warning", text: "Please complete Product Information." });
+      return;
+    }
+    if (!quantity || quantity === "0") {
+      Swal.fire({ icon: "warning", text: "Please enter desired quantity amount." });
+      return;
     }
 
-    orderItemsTbl.row.add([
-        product,
-        quantity,
-        parseFloat(srp).toFixed(2),
-        siNo,
-        serial,
-        product,
-        supplier,
-        category,
-        type,
-        branch,
-        vat,
-        vatSales,
-        warranty,
-        datePrepared
-    ]).draw(false);
+    var newRow = document.createElement("tr");
+    newRow.innerHTML =
+      "<td>" +
+      product +
+      "</td><td>" +
+      quantity +
+      "</td><td>" +
+      srp +
+      "</td><td>" +
+      SIno +
+      "</td><td>" +
+      vat +
+      "</td><td>" +
+      vatsales +
+      "</td><td>" +
+      warranty +
+      "</td><td>" +
+      datePrepared +
+      "</td><td>" +
+      serialno +
+      "</td><td>" +
+      category +
+      "</td><td>" +
+      type +
+      "</td><td>" +
+      branch +
+      "</td><td>" +
+      supplier +
+      "</td>";
+
+    var tableBody = document.getElementById("table1").querySelector("tbody");
+    tableBody.appendChild(newRow);
+    document.getElementById("orderform").reset();
 
     $("#submit-btn").prop("disabled", false);
     $("#cancel-btn").prop("disabled", false);
-    resetForms(false);
-}
+  });
 
-function cancelSingleProduct() {
-    if (!selectedRow) {
-        Swal.fire({ icon: "warning", title: "Select an item to remove" });
-        return;
-    }
-    orderItemsTbl.row(selectedRow).remove().draw(false);
-    selectedRow = null;
-    $("#cancel-btn").prop("disabled", true);
-    if (orderItemsTbl.rows().count() === 0) {
-        $("#submit-btn").prop("disabled", true);
-    }
-}
+  $("#cancel-btn").on("click", function () {
+    $("#myForm")[0].reset();
+    $("#summary")[0].reset();
+    $("#orderform")[0].reset();
+    $("#compute")[0].reset();
+    $("#tableBody").empty();
+  });
 
-function resetForms(hard = true) {
-    if (hard) {
-        $("#myForm")[0].reset();
-        $("#orderform")[0].reset();
-        $("#summary")[0].reset();
-        $("#compute")[0].reset();
-        $("#tableBody").empty();
-        orderItemsTbl.clear().draw();
-        $("#submit-btn").prop("disabled", true);
-        $("#cancel-btn").prop("disabled", true);
-    } else {
-        $("#orderform")[0].reset();
-        $("#summary")[0].reset();
-        $("#compute")[0].reset();
-    }
-}
-
-/* -------------------------------------------------------------------------- */
-/* Submission                                                                 */
-/* -------------------------------------------------------------------------- */
-function submitOrderConfirmation() {
-    const rows = orderItemsTbl.rows().data().toArray();
-    if (!rows.length) {
-        Swal.fire({ icon: "warning", title: "No items to submit" });
-        return;
-    }
-
-    const payload = rows.map(row => ({
-        product: row[0],
-        quantity: row[1],
-        srp: row[2],
-        SINo: row[3],
-        serialNo: row[4],
-        category: row[8],
-        type: row[9],
-        branch: row[10],
-        vat: row[11],
-        vatSales: row[12],
-        warranty: row[13],
-        datePrepared: row[14],
-        order_no: currentOrderNo,
+  $("#submit-btn").on("click", function () {
+    var tableBody = document.getElementById("table1").querySelector("tbody");
+    var dataArray = [];
+    tableBody.querySelectorAll("tr").forEach(function (row) {
+      var cells = row.querySelectorAll("td");
+      var data = {
+        product: cells[0] ? cells[0].innerText || "" : "",
+        quantity: cells[1] ? cells[1].innerText || "" : "",
+        srp: cells[2] ? cells[2].innerText || "" : "",
+        SINo: cells[3] ? cells[3].innerText || "" : "",
+        vat: cells[4] ? cells[4].innerText || "" : "",
+        vatSales: cells[5] ? cells[5].innerText || "" : "",
+        warranty: cells[6] ? cells[6].innerText || "" : "",
+        datePrepared: cells[7] ? cells[7].innerText || "" : "",
+        serialno: cells[8] ? cells[8].innerText || "" : "",
+        category: cells[9] ? cells[9].innerText || "" : "",
+        type: cells[10] ? cells[10].innerText || "" : "",
+        branch: cells[11] ? cells[11].innerText || "" : "",
+        supplier: cells[12] ? cells[12].innerText || "" : "",
+        order_no: $("#order_no").val(),
         recipient: $("#recipient").val(),
-        sender: $("#sender").val()
-    }));
-
-    $.ajax({
-        url: "./ajax-inventory/submit-btn-order-confirmation.php",
-        type: "POST",
-        contentType: "application/json",
-        data: JSON.stringify(payload),
-        success() {
-            Swal.fire({ icon: "success", title: "Order saved" }).then(() => location.reload());
-        },
-        error(err) {
-            console.error("Submit error", err);
-            Swal.fire({ icon: "error", title: "Submission failed" });
-        }
+        sender: $("#sender").val(),
+      };
+      dataArray.push(data);
     });
-}
 
-/* -------------------------------------------------------------------------- */
-/* Transmittal Modal (just hook point here)                                   */
-/* -------------------------------------------------------------------------- */
-function openTransmittalModal() {
-    // If you need to hook a modal like transmittal receipt, call it here.
-    // $("#exampleModal").modal("show");
-}
+    var xhr = new XMLHttpRequest();
+    xhr.open("POST", "./ajax-inventory/submit-btn-order-confirmation.php", true);
+    xhr.onreadystatechange = function () {
+      if (xhr.readyState === XMLHttpRequest.DONE) {
+        if (xhr.status === 200) {
+          setTimeout(location.reload.bind(location), 3000);
+          const Toast = Swal.mixin({
+            toast: true,
+            position: "top-end",
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true,
+            didOpen: function (toast) {
+              toast.onmouseenter = Swal.stopTimer;
+              toast.onmouseleave = Swal.resumeTimer;
+            },
+          });
+          Toast.fire({ icon: "success", title: "Added successfully" });
+        } else {
+          const Toast = Swal.mixin({
+            toast: true,
+            position: "top-end",
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true,
+            didOpen: function (toast) {
+              toast.onmouseenter = Swal.stopTimer;
+              toast.onmouseleave = Swal.resumeTimer;
+            },
+          });
+          Toast.fire({ icon: "error", title: "Error inserting data" });
+        }
+      }
+    };
+    $("#myForm")[0].reset();
+    $("#summary")[0].reset();
+    $("#orderform")[0].reset();
+    $("#compute")[0].reset();
+    $("#tableBody").empty();
+    var jsonData = JSON.stringify(dataArray);
+    xhr.send(jsonData);
+  });
+});
