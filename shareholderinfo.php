@@ -49,22 +49,23 @@
                 background-color: lightgray;
             }
 
-            /* Names list styles */
+            /* Names list styles (inside table footer) */
             #shNamesList {
                 border: 1px solid #ced4da;
                 border-radius: 0.375rem;
                 background-color: white;
-                max-height: 300px;
+                max-height: 250px;
                 overflow-y: auto;
-                margin-top: 10px;
+                margin-top: 5px;
             }
 
             #shNamesList .list-group-item {
                 cursor: pointer;
-                padding: 0.75rem 1rem;
+                padding: 0.5rem 0.75rem;
                 border: none;
                 border-bottom: 1px solid #e9ecef;
                 transition: background-color 0.2s;
+                text-align: left;
             }
 
             #shNamesList .list-group-item:hover {
@@ -103,24 +104,9 @@
                             </div>
                             <hr style="height: 1px">
 
-                            <!-- TABLE FIRST -->
-                            <table id="shareholderTbl" class="table table-bordered text-center" style="width:100%;">
-                                <thead>
-                                    <tr>
-                                        <th style="width:20%;text-align:center">ID</th>
-                                        <th style="width:20%;text-align:center">Full Name</th>
-                                        <th style="width:20%;text-align:center">Shareholder Type</th>
-                                        <th style="width:20%;text-align:center">No. Of Shares</th>
-                                        <th style="width:20%;text-align:center">Type</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="shareholderList">
-                                </tbody>
-                            </table>
-
-                            <!-- SEARCH BAR + NAMES LIST UNDER THE TABLE -->
-                            <div class="row mt-3">
-                                <div class="form-group row mb-3">
+                            <!-- SEARCH BAR ON TOP (OUTSIDE TABLE) -->
+                            <div class="row mb-3">
+                                <div class="form-group row">
                                     <label class="col-sm-auto col-form-label">Name</label>
                                     <div class="col-sm-6">
                                         <input type="text"
@@ -131,9 +117,33 @@
                                     </div>
                                 </div>
                             </div>
-                            <div id="shNamesList" class="list-group mb-3">
-                                <!-- Names will be populated here by JS -->
-                            </div>
+
+                            <!-- TABLE WITH NAMES LIST IN FOOTER -->
+                            <table id="shareholderTbl" class="table table-bordered text-center" style="width:100%;">
+                                <thead>
+                                    <tr>
+                                        <th style="width:20%;text-align:center">ID</th>
+                                        <th style="width:20%;text-align:center">Full Name</th>
+                                        <th style="width:20%;text-align:center">Shareholder Type</th>
+                                        <th style="width:20%;text-align:center">No. Of Shares</th>
+                                        <th style="width:20%;text-align:center">Type</th>
+                                    </tr>
+                                </thead>
+
+                                <tbody id="shareholderList">
+                                    <!-- rows added by JS -->
+                                </tbody>
+
+                                <tfoot>
+                                    <tr>
+                                        <td colspan="5">
+                                            <div id="shNamesList" class="list-group">
+                                                <!-- Names will be populated here by JS -->
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tfoot>
+                            </table>
                         </div>
                     </div>
                 </div>
