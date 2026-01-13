@@ -2,6 +2,7 @@
     session_start();
     if (isset($_SESSION['EMPNO']) && isset($_SESSION['USERNAME']) && isset($_SESSION["AUTHENTICATED"]) && $_SESSION["AUTHENTICATED"] === true) {
 ?>
+
 <!doctype html>
 <html lang="en" dir="ltr">
     <?php
@@ -17,289 +18,555 @@
             <div class="loader-body"></div>
         </div>
         </div>
-        <!-- loader END --> 
-
-        <style>
-            td {
-                font-weight: 400;
-            }
-        
-            form {
-                width: 100%;
-                padding: 20px;
-                background-color: white;
-                border-radius: 10px;
-            }
-        
-            label,
-            th {
-                color: #090909;
-            }
-        
-            main {
-                background-color: #EAEAF6;
-            }
-        
-            th {
-                position: sticky;
-                top: 0;
-                font-weight: bold;
-                color: #090909;
-            }
-        
-            .selected td {
-                background-color: lightgray;
-            } 
-        </style>
+        <!-- loader END -->
 
         <?php
             include('../../includes/pages.sidebar.php');
             include('../../includes/pages.navbar.php');
         ?>
-        
+
+            <style>
+                label {
+                    color: #090909;
+                }
+                .form-control {
+                    color: #090909 !important;
+                    border:1px solid #000000 !important;
+                }
+                .form-select {
+                    color: #090909 !important;
+                    border:1px solid #000000 !important;
+                }
+                /* Selection box */
+                .select2-container--default .select2-selection--single {
+                    border: 1px solid #000000 !important;
+                }
+
+                .select2-container--default .select2-selection--single .select2-selection__rendered {
+                    color: #090909 !important;
+                }
+
+                /* Dropdown */
+                .select2-dropdown {
+                    border: 1px solid #000000 !important;
+                }
+
+                .select2-results__option {
+                    color: #090909 !important;
+                }
+
+                /* Optional: Highlighted option */
+                .select2-results__option--highlighted {
+                    background-color: #e0e0e0 !important;
+                    color: #090909 !important;
+                }
+                form {
+                    width: 100%;
+                    padding: 20px;
+                    background-color: white;
+                    border-radius: 10px;
+                }
+                th {
+                    font-weight: bold;
+                    color: #090909;
+                    position: sticky;
+                    top: 0;
+                }
+            </style>
+
             <div class="container-fluid mt-1">
-                <div class=" p-3 shadow rounded-3" style="background-color: white;">
-                    <p style="color: blue; font-weight: bold;" class="my-2 fs-5">iSynergies Employee</p>
+                <div class="shadow p-3 rounded-3" style="background-color: white;">
+                    <p style="color: blue; font-weight: bold;" class="fs-5 my-2">Outgoing</p>
                 </div>
-                <div class="row mt-4 mb-3">
-                    <div class="col-md-12">
-                        <div class=" shadow p-3 rounded-3  " style="background-color: white; overflow:auto;">
-                            <p class="fw-medium fs-5" style="color: #090909;">Staff List</p>
-                            <hr style="height: 1px">
-                            <div class="col-md-4 d-flex mb-3" role="search">
-                                
+
+                <div class="row">
+                    <!-- Product Information Container -->
+                    <div class="col-lg-4 col-md-4 mt-2">
+                        <div class=" shadow p-3 rounded-3" style="background-color: white;">
+                            <div class="row">
+                                <div class="col-lg-12">
+                                    <p class="fw-medium fs-5" style="color: #090909;">Product Information</p>
+                                    <hr style="height: 1px">
+                                </div>
                             </div>
-                            <table id="staffTbl" class="table table-bordered text-center" style="width:100%;">
-                                <thead>
-                                    <tr>
-                                        <th style="width:25%;text-align:center">Employee No.</th>
-                                        <th style="width:25%;text-align:center">Employee Name</th>
-                                        <th style="width:25%;text-align:center">Employee Status</th>
-                                        <th style="width:25%;text-align:center">Designation</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="staffList">
-                                
-                                </tbody>
-                            </table>
+
+                            <div>
+                                <form id="myForm" method="POST">
+                                    <div class="mb-2 row">
+                                        <label class="col-sm-3 col-form-label" for="transactionDate">Transaction Date:</label>
+                                        <div class="col-sm-8">
+                                            <input type="date" id="transactionDate" name="transactionDate" class="form-control" required>
+                                        </div>
+                                    </div>
+
+                                    <div class="d-flex justify-content-start mb-2">
+                                        <div class="form-check">
+                                            <input class="form-check-input me-1" type="checkbox" value="Yes" name="isConsignment" id="isConsignment" onclick="isConsignmentBox();">
+                                            <label class="form-check-label" for="isConsignment">Consignment</label>
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-2 row">
+                                        <label class="col-sm-3 col-form-label" for="isynBranch">Isyn Branch:</label>
+                                        <div class="col-sm-8">
+                                            <select class="form-select" name="isynBranch" id="isynBranch" onchange="LoadBranch(this.value)" required>
+                                                <option value="" selected>Select</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-2 row" id="consignmentBranchContainer" style="display: None;">
+                                        <label class="col-sm-3 col-form-label" for="isynBranch">Branch:</label>
+                                        <div class="col-sm-8">
+                                            <select class="form-select" name="consignmentBranch" id="consignmentBranch" onchange="forBranchClear();">
+                                                <option value="" selected disabled>Select</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-2 row">
+                                        <label class="col-sm-3 col-form-label" for="type">Type</label>
+                                        <div class="col-sm-8">
+                                            <select class="form-select" name="type" id="type" onchange="LoadCategory(this.value);" required>
+                                                <option value="" selected>Select</option>
+                                                <!-- Populate options dynamically -->
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-2 row">
+                                        <label class="col-sm-3 col-form-label" for="category">Category:</label>
+                                        <div class="col-sm-8">
+                                            <select class="form-select" aria-label="Category" name="category" id="category" onchange="LoadSerialProduct(this.value);" required>
+                                                <!-- <option value="" selected>Select</option> -->
+                                                <!-- Populate options dynamically -->
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-2 row">
+                                        <label class="col-sm-3 col-form-label">Select by:</label>
+                                        <div class="col-sm-9">
+                                            <div class="row mt-2">
+                                                <div class="col-lg-5 col-sm-5">
+                                                    <div class="form-check">
+                                                        <input class="form-check-input me-1" type="radio" value="productName" name="selectBy" id="productName">
+                                                        <label class="form-check-label" for="productName">Product Name</label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-lg-4 col-sm-4">
+                                                    <div class="form-check">
+                                                        <input class="form-check-input me-1" type="radio" value="serial" name="selectBy" id="serialNo">
+                                                        <label class="form-check-label" for="serialNo">Serial No.</label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-2 row">
+                                        <label class="col-sm-3 col-form-label" for="SerialProduct" id="SerialProdlbl">Serial:</label>
+                                        <div class="col-sm-8">
+                                            <select id="SerialProduct" name="SerialProduct" class="form-select" onchange="LoadProductSINo(this.value);" required>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-2 row">
+                                        <label class="col-sm-3 col-form-label" for="SINo">Supplier SI:</label>
+                                        <div class="col-sm-8">
+                                            <select id="SINo" name="SINo" class="form-select" onchange="LoadProductSummary();" required>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                            
+                            <div class="col-md-12 mt-4">
+                                <p class="fw-medium fs-5" style="color: #090909;">Product Summary</p>
+                                <hr style="height: 1px">
+                                <form id="summary" method="POST">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <label for="psSupplierSI" class="form-label mt-2">Supplier SI:</label>
+                                            <input type="text" id="psSupplierSI" name="psSupplierSI" class="form-control form-control-sm" disabled>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="psSerialNo" class="form-label mt-2">Serial No.:</label>
+                                            <input type="text" id="psSerialNo" name="psSerialNo" class="form-control form-control-sm" disabled>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="psProduct" class="form-label mt-2">Product:</label>
+                                            <input type="text" id="psProduct" name="psProduct" class="form-control form-control-sm" disabled>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="psSupplier" class="form-label mt-2">Supplier:</label>
+                                            <input type="text" id="psSupplier" name="psSupplier" class="form-control form-control-sm" disabled>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="psSRP" class="form-label mt-2">SRP:</label>
+                                            <input type="text" id="psSRP" name="psSRP" class="form-control form-control-sm" disabled>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="psQuantity" class="form-label mt-2">Quantity:</label>
+                                            <input type="text" id="psQuantity" name="psQuantity" class="form-control form-control-sm" disabled>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="psDealerPrice" class="form-label mt-2">Dealer's Price:</label>
+                                            <input type="text" id="psDealerPrice" name="psDealerPrice" class="form-control form-control-sm" disabled>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="psTotalPrice" class="form-label mt-2">Total Price:</label>
+                                            <input type="text" id="psTotalPrice" name="psTotalPrice" class="form-control form-control-sm" disabled>
+                                        </div>
+                                    </div>
+                                </form> 
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-8 col-md-8 mt-2">
+                        <div class="row">
+                            <div class="col-lg-6 col-md-6">
+                                <div class="p-3 rounded-2 shadow" style="background-color: white;">
+                                    <div class="col-lg-12">
+                                        <p class="fw-medium fs-5" style="color: #090909;">Purchased By</p>
+                                        <hr style="height: 1px">
+                                        <form id="purchaseBy Form" method="POST">
+                                            <div class="row">
+                                                <div class="col-lg-6 col-md-6">
+                                                    <label for="customerType" class="form-label">Customer Type</label>
+                                                    <select id="customerType" name="customerType" class="form-select" required onchange="toggleCustomerNameInput(this.value)">
+                                                        <option value="" selected> SELECT</option>
+                                                        <option value="OTHER CLIENT"> OTHER CLIENT</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+
+                                            <div class="row">
+                                                <div class="col-lg-6 col-md-6 mt-2">
+                                                    <label for="clientNameInput" class="form-label">Customer Name:</label>
+                                                    <div id="customerNameInputDiv">
+                                                        <input type="text" id="customerNameInput" class="form-control" name="customerNameInput" readonly>
+                                                    </div>
+                                                    <div id="customerNameSelectDiv" style="display:None;">
+                                                        <select id="customerNameSelect" class="form-select" name="customerNameSelect" onchange="LoadCustomerNameInfo(this.value);" required>
+                                                            <option value="" selected disabled>Select</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+
+                                                <div class="col-lg-6 col-md-6">
+                                                    <div id="checkboxes">
+                                                        <label class="form-label">.</label>
+                                                        <!-- Checkbox for STAFF -->
+                                                        <div id="staffCheckboxDiv" class="form-check mt-3" style="display: none;">
+                                                            <input type="checkbox" class="form-check-input" id="staffCheckbox" name="staffCheckbox" value="staff">
+                                                            <label for="staffCheckbox">STAFF LOAN</label><br>
+                                                        </div>
+                                                        <!-- Checkboxes for MFI branches -->
+                                                        <div id="mfiCheckboxDiv" class="form-check mt-3" style="display: none;">
+                                                            <div class="row">
+                                                                <div class="col-lg-6 col-md-6">
+                                                                    <div class="form-check">
+                                                                        <input type="radio" class="form-check-input" id="branchUsed" name="mfiCheckbox" value="BRANCH USED">
+                                                                        <label for="branchUsed">BRANCH USED</label>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-lg-6 col-md-6">
+                                                                    <input type="radio" class="form-check-input" id="mfiUsed" name="mfiCheckbox" value="MFI CLIENT">
+                                                                    <label for="mfiUsed">MFI CLIENT</label>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="row mt-2">
+                                                <div class="col-md-6">
+                                                    <label for="tinNoinput" class="form-label">TIN</label>
+                                                    <input type="text" class="form-control" name="tinNoinput" id="tinNoinput" placeholder="000-000-000-0000" required>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label for="userSINo" class="form-label">SI No.</label>
+                                                    <input type="text" class="form-control" name="userSINo" id="userSINo" disabled>
+                                                </div>
+                                            </div>
+                                            <div class="row mt-2">
+                                                <div class="col-md-12">
+                                                    <label for="fullAddress" class="form-label">Address</label>
+                                                    <input type="text" class="form-control" name="fullAddress" id="fullAddress" required>
+                                                </div>
+                                            </div>
+                                            <div class="row mt-2">
+                                                <div class="col-md-12">
+                                                    <label for="status" class="form-label">Status</label>
+                                                </div>
+                                                <div class="col-sm-6">
+                                                    <select class="form-select" name="status" id="status" aria-label="Default select example" required>
+                                                        <option value="" selected disabled>Select</option>
+                                                        <option value="PAID">PAID</option>
+                                                        <option value="UNPAID">UNPAID</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-sm-6">
+                                                    <div class="d-flex justify-content-end">
+                                                        <button type="button" class="btn btn-info" id="searchTransmittalBtn" name="searchTransmittalBtn" onclick="SearchTransmittal();"><i class="fa-solid fa-magnifying-glass"></i> Search Transmittal</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-lg-6 col-md-6">
+                                <div class="p-3 rounded-2 shadow" style="background-color: white;">
+                                    <div class="row">
+                                        <div class="col-lg-12">
+                                            <p class="fw-medium fs-5" style="color: #090909;">Merchandise Sales</p>
+                                            <hr style="height: 1px">
+                                        </div>
+                                    </div>
+        
+                                    <div>
+                                        <form id="sales">
+                                            <div class="d-flex justify-content-end align-items-start mb-2">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="addDiscount" name="addDiscount" value="Yes" onclick="AddDiscount();">
+                                                    <label class="form-check-label" for="addDiscount"> Add Discount</label>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <label for="srpMerchSales" class="form-label mt-2">SRP:</label>
+                                                    <input type="text" id="srpMerchSales" name="srpMerchSales" class="form-control" placeholder="0.00" onchange="formatInput(this);" required>
+
+                                                    <label for="quantityMerchSales" class="form-label mt-2">Quantity:</label>
+                                                    <input type="number" name="quantityMerchSales" id="quantityMerchSales" class="form-control" placeholder="0" min="1" onchange="ComputeMerchandise();" required>
+                                                    
+                                                    <label for="vatMerchSales" class="form-label mt-2">DP:</label>
+                                                    <input type="text" class="form-control" name="vatMerchSales" id="vatMerchSales" placeholder="0.00" disabled>
+                                                    
+                                                    <label for="totalCostMerchSales" class="form-label mt-2">Total Cost:</label>
+                                                    <input type="text" class="form-control" name="totalCostMerchSales" id="totalCostMerchSales" placeholder="0.00" disabled>
+                                                </div>
+
+                                                <div class="col-md-6">
+                                                    <label for="discInterestMerchSales" class="form-label mt-2">Disc. Interest:</label>
+                                                    <input type="number" class="form-control" id="discInterestMerchSales" name="discInterestMerchSales" placeholder="0.00" onchange="computeWithDiscount();" disabled>
+
+                                                    <label for="discountAmountMerchSales" class="form-label mt-2">Discount Amount:</label>
+                                                    <input type="text" class="form-control" name="discountAmountMerchSales" id="discountAmountMerchSales" placeholder="0.00" disabled>
+                                                    
+                                                    <label for="newSRPMerchSales" class="form-label mt-2">New SRP:</label>
+                                                    <input type="text" class="form-control" id="newSRPMerchSales" name="newSRPMerchSales" placeholder="0.00" disabled>
+                                                    
+                                                    <label for="totalDiscountMerchSales" class="form-label mt-2">Disc Total Cost:</label>
+                                                    <input type="text" class="form-control" id="totalDiscountMerchSales" name="totalDiscountMerchSales" placeholder="0.00" disabled>
+                                                </div>
+                                            </div>
+                                        </form>
+                                    </div>
+        
+                                    <div class="col-lg-12 mt-2">
+                                        <div class="d-flex justify-content-end">
+                                            <button class="btn btn-primary px-3 py-2 mx-1" type="button" id="addToList" name="addToList" onclick="AddToList();"><i class="fa-solid fa-square-plus"></i> Add</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-lg-12 mt-2">
+                                <div class="shadow p-3 rounded-3 mb-2" style="background-color: white;overflow:auto;">
+                                    <div class="row">
+                                        <div class="col-lg-6 col-md-6">
+                                            <p class="fw-medium fs-5" style="color:#090909;">Items</p>
+                                        </div>
+                                        <div class="col-lg-6 col-md-6">
+                                            <div class="d-flex justify-content-end">
+                                                <button type="button" class="btn btn-success px-3 py-2 mx-1" id="saveBtn" name="saveBtn" onclick="Save();" disabled><i class="fa-solid fa-check-circle"></i></i> Submit</button>
+                                                <button type="button" class="btn btn-danger px-3 py-2 mx-1" id="DeleteFromListBtn" name="DeleteFromListBtn" onclick="DeleteFromItems();" disabled>
+                                                <i class="fa fa-trash" aria-hidden="true"></i> Delete
+                                            </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <hr style="height: 1px">
+                                    <div class="">
+                                        <table id="itemsTbl" style="width:100%;" class="table table-bordered">
+                                            <thead>
+                                                <th>Supplier SI</th>
+                                                <th>Serial No</th>
+                                                <th>Product</th>
+                                                <th>Sold To</th>
+                                                <th>Quantity</th>
+                                                <th>Unit</th>
+                                                <th>Articles</th>
+                                                <th>Unit Price</th>
+                                                <th>Amount</th>
+                                                <th>Vatable Sales</th>
+                                                <th>VAT</th>
+                                                <th>Amount Due</th>
+                                                <th>Discount Product</th>
+                                                <th>Discounted Amount</th>
+                                                <th>New Unit Price</th>
+                                                <th>New Total Amont</th>
+                                            </thead>
+                                            <tbody id="itemsList">
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
-            
-                <div class="row mt-4">
-                    <div class="col-md-12">
-                        <form class="p-3 needs-validation shadow mb-3" id="staffForm" novalidate method="POST">
-                            <input type="hidden" name="id_staff" id="id_staff">
-                            <div class=" align-items-center justify-content-between mb-4">
-                                <button class="btn btn-primary float-end mx-2" id="editButton" class="btn btn-primary float-end" type="button" disabled><i class="fa-solid fa-pen-to-square"></i> Edit</button>
-                                <button class="btn btn-success float-end mx-2" id="addNew" type="button" name="addNew" > <i class="fa-solid fa-plus"></i> New</button>
-                                <p class="fw-medium fs-5" style="color: #090909;">Employee Information</p>
-                            </div>
-                            <hr style="height:1px;">
-                            <input type="hidden" id="editMode" name="editMode" value="">
-                            <div class="row">
-                                <div class="col-md-4">
-                                    <label for="employee_no" class="form-label">Employee No.</label>
-                                    <input disabled type="text" class="form-control text-uppercase" name="employee_no" id="employee_no" placeholder="Employee No." required>
-                                </div>
-                                <div class="col-md-4">
-                                    <label for="employee_status" class="form-label">Employee Status</label>
-                                    <select class="form-select" name="employee_status" id="employee_status" aria-label="Default select example"  disabled>
-                                        <option value="" selected>Select Employee Status</option>
-                                        <option value="Regular">Regular</option>
-                                        <option value="Probationary">Probationary</option>
-                                        <option value="Contractual">Contractual</option>
-                                        <option value="Part-Time">Part-Time</option>
-                                        <option value="Project-Based">Project-Based</option>
-                                        <option value="Intern">Intern</option>
-                                        <option value="Resigned">Resigned</option>
-                                        <option value="Terminated">Terminated</option>
-                                        <option value="Retired">Retired</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-4">
-                                    <label for="date_hired" class="form-label">Date Hired</label>
-                                    <input disabled type="date" class="form-control" name="date_hired" id="date_hired" max="<?php echo date('Y-m-d'); ?>" required>
-                                    <div class="invalid-feedback">
-                                        Invalid Date (cannot be a future date)
-                                    </div>
-                                </div>
-                            </div>
-            
-                            <div class="row">
-                                <div class="col-md-4">
-                                    <label for="first_name" class="form-label">First Name</label>
-                                    <input disabled type="text" class="form-control" name="first_name" id="first_name" placeholder="First Name" required>
-                                    <div class="invalid-feedback">
-                                        Please provide your first name.
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <label for="middle_name" class="form-label">Middle Name</label>
-                                    <input disabled type="text" class="form-control" name="middle_name" id="middle_name" placeholder="Middle Name">
-                                    <div class="invalid-feedback">
-                                        Please provide your Middle name.
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <label for="last_name" class="form-label">Last Name</label>
-                                    <input disabled type="text" class="form-control" name="last_name" id="last_name" placeholder="Last Name" required>
-                                    <div class="invalid-feedback">
-                                        Please provide your last name.
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="row">
-                                <div class="col-md-4">
-                                    <label for="birthdate" class="form-label">Birthdate</label>
-                                    <input disabled type="date" class="form-control" name="birthdate" id="birthdate" max="<?php echo date('Y-m-d'); ?>">
-                                    <div class="invalid-feedback">
-                                        Invalid Date (cannot be a future date)
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <label for="age" class="form-label">Age</label>
-                                    <input type="number" class="form-control" name="age" id="age" disabled readonly>
-                                    <div class="invalid-feedback">
-                                        Enter your Age.
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <label for="designation" class="form-label">Designation</label>
-                                    <select disabled class="form-select" name="designation" id="designation" aria-label="Default select example" >
-                                        <option value="" selected>Select Designation</option>
-                                        <option value="Chief Executive Officer">Chief Executive Officer</option>
-                                        <option value="Chief Operating Officer">Chief Operating Officer</option>
-                                        <option value="Chief Financial Officer">Chief Financial Officer</option>
-                                        <option value="Chief Technology Officer">Chief Technology Officer</option>
-                                        <option value="General Manager">General Manager</option>
-                                        <option value="Operations Manager">Operations Manager</option>
-                                        <option value="HR Manager">HR Manager</option>
-                                        <option value="Finance Manager">Finance Manager</option>
-                                        <option value="IT Manager">IT Manager</option>
-                                        <option value="Sales Manager">Sales Manager</option>
-                                        <option value="Marketing Manager">Marketing Manager</option>
-                                        <option value="Project Manager">Project Manager</option>
-                                        <option value="Team Leader">Team Leader</option>
-                                        <option value="Supervisor">Supervisor</option>
-                                        <option value="Senior Software Engineer">Senior Software Engineer</option>
-                                        <option value="Software Engineer">Software Engineer</option>
-                                        <option value="Junior Software Engineer">Junior Software Engineer</option>
-                                        <option value="Web Developer">Web Developer</option>
-                                        <option value="System Administrator">System Administrator</option>
-                                        <option value="Network Administrator">Network Administrator</option>
-                                        <option value="Database Administrator">Database Administrator</option>
-                                        <option value="Business Analyst">Business Analyst</option>
-                                        <option value="Data Analyst">Data Analyst</option>
-                                        <option value="Quality Assurance Analyst">Quality Assurance Analyst</option>
-                                        <option value="Accountant">Accountant</option>
-                                        <option value="Bookkeeper">Bookkeeper</option>
-                                        <option value="HR Specialist">HR Specialist</option>
-                                        <option value="Recruiter">Recruiter</option>
-                                        <option value="Sales Executive">Sales Executive</option>
-                                        <option value="Marketing Specialist">Marketing Specialist</option>
-                                        <option value="Customer Service Representative">Customer Service Representative</option>
-                                        <option value="Technical Support">Technical Support</option>
-                                        <option value="Administrative Assistant">Administrative Assistant</option>
-                                        <option value="Executive Assistant">Executive Assistant</option>
-                                        <option value="Secretary">Secretary</option>
-                                        <option value="Receptionist">Receptionist</option>
-                                        <option value="Office Clerk">Office Clerk</option>
-                                        <option value="Intern">Intern</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="row">
-                                <div class="col-md-4">
-                                    <label for="email_address" class="form-label">Email Address</label>
-                                    <input disabled type="email" class="form-control" name="email_address" id="email_address" placeholder="exmpl@gmail.com" >
-                                    <div class="invalid-feedback">
-                                        Please provide a valid email address with @gmail.com
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <label for="contact_num" class="form-label">Contact No.</label>
-                                    <input disabled type="text" class="form-control" name="contact_num" id="contact_num" placeholder="09*********">
-                                    <div class="invalid-feedback">
-                                        Please provide your Contact.
-                                    </div>
-                                </div>
-                                <div class="col-md-4 overflow-auto">
-                                    <label for="pagibig" class="form-label">Pag-ibig Number</label>
-                                    <div class="input-group">
-                                        <input type="text" id="pag_ibig" name="pag_ibig" class="form-control tin-field" maxlength="14" disabled>
-                                    </div>
-                                </div>
-                                <div class="col-md-4 overflow-auto">
-                                    <label for="tin" class="form-label">TIN</label>
-                                    <div class="input-group">
-                                        <input type="text" id="tin" name="tin" class="form-control tin-field" maxlength="16" disabled>
-                                    </div>
-                                </div>
-                                <div class="col-md-4 overflow-auto">
-                                    <label for="philhealth" class="form-label">PhilHealth</label>
-                                    <div class="input-group">
-                                        <input type="text" id="philhealth" name="philhealth" class="form-control philhealth-field" maxlength="15" disabled>
-                                    </div>
-                                </div>
-                                <div class="col-md-4 overflow-auto">
-                                    <label for="sss" class="form-label">SSS</label>
-                                    <div class="input-group">
-                                        <input type="text" id="sss" name="sss" class="form-control sss1-field" maxlength="15" disabled>
-                                    </div>
-                                </div>
-                            </div>
-                            <hr style="height:1px;">
-                            <p class=" fs-5" style="color: #090909;">Employee Address</p>
-                            <div class="row">
-                            <div class="col-md-3">
-                                    <label for="Region" class="form-label">Region</label>
-                                    <select class="form-select mb-2" id="Region" name="Region" aria-label="Default select example"  disabled>
-                                        <option value="" selected>Select</option>
-                                    
-                                    </select>
+            </div>
+
+            <div class="modal fade" id="SearchTransmittalMDL" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="SearchTransmittal" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h1 class="modal-title fs-5" id="exampleModalLabel">Search Transmittal</h1>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="row align-items-end">
+                                <div class="col-md-3">
+                                    <label for="transmittalDateFrom" class="bold-label">Date From</label>
+                                    <input type="text" name="transmittalDateFrom" id="transmittalDateFrom" class="form-control">
                                 </div>
                                 <div class="col-md-3">
-                                    <label for="Province" class="form-label">Province</label>
-                                    <select class="form-select" id="Province" name="Province" aria-label="Default select example"  disabled>
-                                        <option value="" selected>Select</option>
-                                    
-                                    </select>
+                                    <label for="transmittalDateTo" class="bold-label">Date To</label>
+                                    <input type="text" name="transmittalDateTo" id="transmittalDateTo" class="form-control">
                                 </div>
                                 <div class="col-md-3">
-                                    <label for="CityTown" class="form-label">City/Town</label>
-                                    <select class="form-select" id="CityTown" name="CityTown" aria-label="Default select example"  disabled>
-                                        <option value="" selected>Select</option>
-                                        
-                                    </select>
+                                    <button class="btn btn-primary" id="transmittalSearchBtn" name="transmittalSearchBtn" onclick="TransmittalSearch();"><i class="fa-solid fa-magnifying-glass"></i> Search</button>
                                 </div>
-                                <div class="col-md-3">
-                                    <label for="Barangay" class="form-label">Barangay</label>
-                                    <select class="form-select" id="Barangay" name="Barangay" aria-label="Default select example"  disabled>
+                            </div>
+                            <hr style="height: 1px">
+                            <div class="">
+                                <table id="listTbl" class="table table-bordered table-hover" style="width:100%">
+                                    <thead>
+                                        <tr>
+                                            <th width="20%">TRANS NO.</th>
+                                            <th width="20%">CLIENT</th>
+                                            <th width="20%">DATE</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="listList">
+                                    </tbody>
+                                </table>
+                            </div>
+                            <hr style="height: 1px">
+                            <div class="table-responsive">
+                                <table id="productTbl" class="table table-bordered table-hover" style="width:100%">
+                                    <thead>
+                                        <tr>
+                                            <th width="20%">Product</th>
+                                            <th width="20%">Transmittal Qty</th>
+                                            <th width="20%">Current Inv Qty</th>
+                                            <th width="20%">Availability</th>
+                                            <th width="20%">Consignment</th>
+                                            <th>SRP</th>
+                                            <th>SINo</th>
+                                            <th>SerialNo</th>
+                                            <th>Product</th>
+                                            <th>SRP</th>
+                                            <th>Category</th>
+                                            <th>Type</th>
+                                            <th>Stock</th>
+                                            <th>Branch</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="productList">
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="row mt-3">
+                                <div class="col-6">
+                                    <button class="btn btn-danger col-12" type="button" id="deleteFromTProdList" name="deleteFromTProdList" onclick="DeleteFromTransProdList();" disabled><i class="fa-solid fa-retweet"></i> Delete</button>
+                                </div>
+                                <div class="col-6">
+                                    <button class="btn btn-success col-12" type="button" id="loadToList" name="loadToList" onclick="LoadtoList();" disabled><i class="fa-solid fa-retweet"></i> Load</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal fade" id="PanelConsignMDL" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="PanelConsign" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h1 class="modal-title fs-5" id="exampleModalLabel">Panel Consign</h1>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="mb-2 row">
+                                <label class="col-sm-3 col-form-label" for="branchConsign">Branch: </label>
+                                <div class="col-sm-8">
+                                    <select class="form-select" name="branchConsign" id="branchConsign" onchange="LoadBranchConsign(this.value);">
                                         <option value="" selected>Select</option>
-                                        
+                                        <!-- Populate options dynamically -->
                                     </select>
                                 </div>
                             </div>
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <label for="Street" class="form-label">Street/House No./ Zone</label>
-                                    <input type="text" class="form-control" id="Street" name="Street" placeholder="Street/House No./Zone" disabled>
-                                    <div class="invalid-feedback">
-                                        Please enter street.
+                            <div class="mb-2 row">
+                                <label class="col-sm-3 col-form-label" for="availableQty">Available Qty: </label>
+                                <div class="col-sm-5">
+                                    <input type="text" id="availableQty" name="availableQty" class="form-control" disabled>
+                                </div>
+                            </div>
+                            <div class="mb-2 row">
+                                <label class="col-sm-3 col-form-label" for="enteredQty">Entered Qty: </label>
+                                <div class="col-sm-5">
+                                    <input type="text" id="enteredQty" name="enteredQty" class="form-control">
+                                </div>
+                                <div class="col-sm-4">
+                                    <div class="d-flex justify-content-end">
+                                        <button class="btn btn-primary px-3 py-2 mx-1" type="button" id="addBranchConsign" name="addBranchConsign" onclick="AddBranchConsign();"><i class="fa-solid fa-plus"></i></button>
+                                        <button class="btn btn-danger px-3 py-2 mx-1" type="button" id="deleteBranchConsign" name="deleteBranchConsign" onclick="DeleteFromConsignQty();" disabled><i class="fa-solid fa-trash"></i></button>
                                     </div>
                                 </div>
                             </div>
-                            <div class="row">
-                                <div class="col-12 float-end mt-3">
-                                    <button id="updateButton" disabled class="btn btn-primary mx-2 float-end" style="display: none;" type="button" name="updateButton" form="staffForm"><i class="fa-solid fa-rotate-right"></i> Update</button>
-                                    
-                                    <button id="submitButton" disabled class="btn btn-primary mx-2 float-end" type="button" name="submitButton" form="staffForm"> <i class="fa-solid fa-check-circle"></i> Submit</button>
-                                
-                                    <button class="btn btn-danger float-end" type="button" id="cancel" disabled hidden onclick="Cancel();"><i class="fa-regular fa-circle-xmark"></i> Cancel</button>
+                            <hr style="height: 1px">
+                            <div class="">
+                                <table id="branchConsignTbl" class="table table-borderless" style="width:100%">
+                                    <thead>
+                                        <tr>
+                                            <th width="50%">Branch</th>
+                                            <th width="50%">Qty</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="branchConsignList">
+                                    </tbody>
+                                </table>
+                            </div>
+                            <hr style="height: 1px">
+                            <div class="mb-2 row">
+                                <label class="col-sm-3 col-form-label" for="needQty">Need Qty: </label>
+                                <div class="col-sm-5">
+                                    <input type="text" id="needQty" name="needQty" class="form-control" disabled>
+                                </div>
+                                <div class="col-sm-4">
+                                    <div class="d-flex justify-content-end">
+                                        <button class="btn btn-success px-3 py-2 mx-1" type="button" id="confirmBranchConsignQty" name="confirmBranchConsignQty" onclick="ConfirmBranchConsignQty();"><i class="fa-solid fa-check"></i> Confirm</button>
+                                    </div>
                                 </div>
                             </div>
-                        </form>
+                            <div class="mb-2 row">
+                                <div class="col-sm-12">
+                                    <div class="d-flex justify-content-end">
+                                        <button type="button" class="btn btn-danger" data-bs-dismiss="modal"><i class="fa-solid fa-ban"></i> Cancel</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -308,203 +575,152 @@
             include('../../includes/pages.footer.php');
         ?>
 
-        <script src="../../js/maintenance.js"></script>
-        <script src="../../js/profiling/isynstaff.js"></script>
+        <script src="../../assets/datetimepicker/jquery.datetimepicker.full.js"></script>
+        <script src="../../assets/select2/js/select2.full.min.js"></script>
+        <script src="../../js/inventorymanagement/outgoinginventory.js?<?= time() ?>"></script>
 
-        <script>
-            // Function to format pagibig
-            document.getElementById('pag_ibig').addEventListener('input', function(e) {
-                let inputValue = e.target.value.replace(/\D/g, '').substring(0, 12);
-                let formattedValue = '';
-                for (let i = 0; i < inputValue.length; i++) {
-                    if (i > 0 && i % 4 === 0) {
-                        formattedValue += '-';
-                    }
-                    formattedValue += inputValue[i];
-                }
-                e.target.value = formattedValue;
-            });
-        
-            // Function to format TIN
-            document.getElementById('tin').addEventListener('input', function(e) {
-                let inputValue = e.target.value.replace(/\D/g, '').substring(0, 13);
-                let formattedValue = '';
-                for (let i = 0; i < inputValue.length; i++) {
-                    if (i > 0 && i % 3 === 0 && i < 10) {
-                        formattedValue += '-';
-                    } else if (i === 9) {
-                        formattedValue += '-';
-                    }
-                    formattedValue += inputValue[i];
-                }
-                e.target.value = formattedValue;
-            });
-        
-            // Function to format philhealth
-            document.getElementById('philhealth').addEventListener('input', function(e) {
-                let inputValue = e.target.value.replace(/\D/g, '').substring(0, 12);
-                let formattedValue = '';
-                for (let i = 0; i < inputValue.length; i++) {
-                    if (i === 2 || i === 11) {
-                        formattedValue += '-';
-                    }
-                    formattedValue += inputValue[i];
-                }
-                e.target.value = formattedValue;
-            });
-        
-            // Function to format sss
-            document.getElementById('sss').addEventListener('input', function(e) {
-                let inputValue = e.target.value.replace(/\D/g, '').substring(0, 12);
-                let formattedValue = '';
-                for (let i = 0; i < inputValue.length; i++) {
-                    if (i === 2 || i === 11) {
-                        formattedValue += '-';
-                    }
-                    formattedValue += inputValue[i];
-                }
-                e.target.value = formattedValue;
-            });
-
-            // Set max date for date_hired and birthdate to today
-            document.addEventListener('DOMContentLoaded', function() {
-                const dateHiredInput = document.getElementById('date_hired');
-                const birthdateInput = document.getElementById('birthdate');
-                const today = new Date().toISOString().split('T')[0];
-                dateHiredInput.setAttribute('max', today);
-                birthdateInput.setAttribute('max', today);
-
-                // Calculate age when birthdate changes
-                birthdateInput.addEventListener('change', function() {
-                    calculateAge();
-                });
-            });
-
-            // Function to calculate age from birthdate
-            function calculateAge() {
-                const birthdateInput = document.getElementById('birthdate');
-                const ageInput = document.getElementById('age');
-                
-                if (birthdateInput.value) {
-                    const birthDate = new Date(birthdateInput.value);
-                    const today = new Date();
-                    let age = today.getFullYear() - birthDate.getFullYear();
-                    const monthDiff = today.getMonth() - birthDate.getMonth();
-                    
-                    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-                        age--;
-                    }
-                    
-                    ageInput.value = age;
-                } else {
-                    ageInput.value = '';
-                }
-            }
-
-            // Employee No - only numbers (no letters, no special characters)
-            document.getElementById('employee_no').addEventListener('input', function(e) {
-                e.target.value = e.target.value.replace(/[^0-9]/g, '');
-            });
-
-            // First name - only letters and spaces (no numbers, no special characters)
-            document.getElementById('first_name').addEventListener('input', function(e) {
-                let value = e.target.value.replace(/[^a-zA-Z\s]/g, '');
-                e.target.value = value.toUpperCase();
-            });
-
-            // Middle name - only letters and spaces (no numbers, no special characters)
-            document.getElementById('middle_name').addEventListener('input', function(e) {
-                let value = e.target.value.replace(/[^a-zA-Z\s]/g, '');
-                e.target.value = value.toUpperCase();
-            });
-
-            // Last name - only letters and spaces (no numbers, no special characters)
-            document.getElementById('last_name').addEventListener('input', function(e) {
-                let value = e.target.value.replace(/[^a-zA-Z\s]/g, '');
-                e.target.value = value.toUpperCase();
-            });
-
-            // Contact No. - only numbers, must start with 09, exactly 11 digits
-            document.getElementById('contact_num').addEventListener('input', function(e) {
-                let value = e.target.value.replace(/[^0-9]/g, '');
-                
-                // Must start with 09
-                if (value.length > 0 && !value.startsWith('09')) {
-                    value = '09' + value.replace(/^09/, '').substring(0, 9);
-                }
-                
-                // Limit to 11 digits
-                if (value.length > 11) {
-                    value = value.substring(0, 11);
-                }
-                
-                e.target.value = value;
-            });
-
-            // Contact Number validation on blur
-            document.getElementById('contact_num').addEventListener('blur', function(e) {
-                const value = e.target.value;
-                if (value && (value.length !== 11 || !value.startsWith('09'))) {
-                    e.target.setCustomValidity('Contact number must start with 09 and be exactly 11 digits');
-                    e.target.classList.add('is-invalid');
-                } else {
-                    e.target.setCustomValidity('');
-                    e.target.classList.remove('is-invalid');
-                }
-            });
-
-            // Email - must contain @gmail.com
-            document.getElementById('email_address').addEventListener('input', function(e) {
-                const value = e.target.value;
-                if (value && !value.includes('@gmail.com')) {
-                    e.target.setCustomValidity('Email must contain @gmail.com');
-                    e.target.classList.add('is-invalid');
-                } else {
-                    e.target.setCustomValidity('');
-                    e.target.classList.remove('is-invalid');
-                }
-            });
-
-            // Email validation on blur
-            document.getElementById('email_address').addEventListener('blur', function(e) {
-                const value = e.target.value;
-                if (value && !value.includes('@gmail.com')) {
-                    e.target.setCustomValidity('Email must contain @gmail.com');
-                    e.target.classList.add('is-invalid');
-                } else {
-                    e.target.setCustomValidity('');
-                    e.target.classList.remove('is-invalid');
-                }
-            });
-
-            // Street/House No./Zone - letters and numbers, max 3 numbers, no special characters
-            document.getElementById('Street').addEventListener('input', function(e) {
-                let value = e.target.value;
-                // Remove special characters (keep only letters, numbers, and spaces)
-                value = value.replace(/[^a-zA-Z0-9\s]/g, '');
-                
-                // Limit to maximum 3 numeric digits
-                let numbersFound = 0;
-                value = value.split('').filter(char => {
-                    if (/\d/.test(char)) {
-                        if (numbersFound < 3) {
-                            numbersFound++;
-                            return true;
-                        }
-                        return false; // Skip this number if we already have 3
-                    }
-                    return true; // Keep all letters and spaces
-                }).join('');
-                
-                e.target.value = value.toUpperCase();
-            });
-        </script>
-        
     </body>
 </html>
 <?php
   } else {
     echo '<script> window.location.href = "../../login.php"; </script>';
   }
-
 ?>
+
+<script>
+    // Set max date to today for transaction date input
+    document.addEventListener('DOMContentLoaded', function() {
+        const transactionDateInput = document.getElementById('transactionDate');
+        
+        if (transactionDateInput) {
+            // Get today's date in YYYY-MM-DD format
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            const maxDate = `${year}-${month}-${day}`;
+            
+            // Set the max attribute to today's date
+            transactionDateInput.setAttribute('max', maxDate);
+            
+            // Add validation on change
+            transactionDateInput.addEventListener('change', function() {
+                const selectedDate = new Date(this.value);
+                const currentDate = new Date();
+                
+                // Reset time to compare only dates
+                currentDate.setHours(0, 0, 0, 0);
+                selectedDate.setHours(0, 0, 0, 0);
+                
+                if (selectedDate > currentDate) {
+                    alert('Transaction date cannot be in the future. Please select today or a past date.');
+                    this.value = maxDate;
+                }
+            });
+            
+            // Set default value to today if empty
+            if (!transactionDateInput.value) {
+                transactionDateInput.value = maxDate;
+            }
+        }
+    });
+
+    // TIN formatting function
+    document.getElementById('tinNoinput').addEventListener('input', function (e) {
+        let inputValue = e.target.value.replace(/\D/g, '').substring(0, 13);
+        let formattedValue = '';
+        
+        for (let i = 0; i < inputValue.length; i++) {
+            if (i > 0 && (i % 3 === 0 && i < 9)) {
+                formattedValue += '-';
+            } else if (i === 9) {
+                formattedValue += '-';
+            }
+            formattedValue += inputValue[i];
+        }
+
+        e.target.value = formattedValue;
+    });
+
+    // Customer Name - only letters and spaces (no numbers, no special characters)
+    document.addEventListener('DOMContentLoaded', function() {
+        const customerNameInput = document.getElementById('customerNameInput');
+        const customerNameSelect = document.getElementById('customerNameSelect');
+        
+        if (customerNameInput) {
+            customerNameInput.addEventListener('input', function(e) {
+                if (!e.target.readOnly) {
+                    e.target.value = e.target.value.replace(/[^a-zA-Z\s]/g, '');
+                }
+            });
+        }
+        
+        // Also validate when customer name is selected from dropdown and then edited
+        // This will be handled by the readonly attribute, but we add validation just in case
+    });
+
+    // Address - accept 2-3 digit numbers, period and comma, no other special characters
+    document.getElementById('fullAddress').addEventListener('input', function(e) {
+        let value = e.target.value;
+        
+        // Remove all characters except letters, numbers, spaces, period, and comma
+        value = value.replace(/[^a-zA-Z0-9\s.,]/g, '');
+        
+        // Limit numbers to maximum 3 digits (allowing 1-3 digits for flexibility)
+        // This processes the string to limit consecutive digits to 3
+        let result = '';
+        let digitCount = 0;
+        
+        for (let i = 0; i < value.length; i++) {
+            const char = value[i];
+            if (/\d/.test(char)) {
+                if (digitCount < 3) {
+                    result += char;
+                    digitCount++;
+                }
+                // Skip if we already have 3 consecutive digits
+            } else {
+                result += char;
+                digitCount = 0; // Reset counter when non-digit is encountered
+            }
+        }
+        
+        e.target.value = result;
+    });
+
+    // SRP - only numbers and period (decimal point) after hundreds
+    document.getElementById('srpMerchSales').addEventListener('input', function(e) {
+        let value = e.target.value;
+        
+        // Remove all characters except numbers and period
+        value = value.replace(/[^0-9.]/g, '');
+        
+        // Ensure only one decimal point
+        const parts = value.split('.');
+        if (parts.length > 2) {
+            value = parts[0] + '.' + parts.slice(1).join('');
+        }
+        
+        // Limit decimal places to 2 (after the period)
+        if (parts.length === 2 && parts[1].length > 2) {
+            value = parts[0] + '.' + parts[1].substring(0, 2);
+        }
+        
+        e.target.value = value;
+    });
+
+    // Validate all required fields before form submission
+    document.addEventListener('DOMContentLoaded', function() {
+        const forms = document.querySelectorAll('form');
+        
+        forms.forEach(function(form) {
+            form.addEventListener('submit', function(e) {
+                if (!form.checkValidity()) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+                form.classList.add('was-validated');
+            });
+        });
+    });
+</script>
