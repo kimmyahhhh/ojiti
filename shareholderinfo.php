@@ -48,7 +48,37 @@
         
             .selected td {
                 background-color: lightgray;
-            } 
+            }
+
+            #shNamesList {
+                border: 1px solid #ced4da;
+                border-radius: 0.375rem;
+                background-color: white;
+                max-height: 300px;
+                overflow-y: auto;
+                margin-top: 10px;
+            }
+
+            #shNamesList .list-group-item {
+                cursor: pointer;
+                padding: 0.75rem 1rem;
+                border: none;
+                border-bottom: 1px solid #e9ecef;
+                transition: background-color 0.2s;
+            }
+
+            #shNamesList .list-group-item:hover {
+                background-color: #f8f9fa;
+            }
+
+            #shNamesList .list-group-item:last-child {
+                border-bottom: none;
+            }
+
+            #shNamesList .list-group-item.selected-name {
+                background-color: #e7f3ff;
+                font-weight: 500;
+            }
         </style>
 
         <?php
@@ -71,13 +101,15 @@
                             </div>
                             <hr style="height: 1px">
                             <div class="row">
-                                <div class="form-group row mb-1">
+                                <div class="form-group row mb-3">
                                     <label class="col-sm-auto col-form-label">Name</label>
                                     <div class="col-sm-6">
-                                        <select class="form-select form-control-sm" id="shNames" onchange="LoadShareHolderList(this.value)">
-                                        </select>
+                                        <input type="text" class="form-control form-control-sm" id="shNames" placeholder="Search shareholder name..." autocomplete="off">
                                     </div>
                                 </div>
+                            </div>
+                            <div id="shNamesList" class="list-group mb-3">
+                                <!-- Names will be populated here -->
                             </div>
                             <table id="shareholderTbl" class="table table-bordered text-center" style="width:100%;">
                                 <thead>
