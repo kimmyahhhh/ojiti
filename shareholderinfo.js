@@ -1,4 +1,6 @@
 var shareholderTbl;
+var shareholderNames = []; // Store names globally
+var selectedName = ""; // Track selected name
 
 // $("#shNames").select2({
 //     width: '100%',
@@ -31,17 +33,65 @@ function LoadShareHolderNames(){
         beforeSend:function(){
         },
         success:function(response){
-            $("#shNames").empty().append(`<option value=""></option>`);
-            $.each(response.NAMES,function(key,value){
-                    $("#shNames").append(`
-                        <option value="${value["fullname"]}">
-                            ${value["fullname"]}
-                        </option>
-                    `);
-            });
+            shareholderNames = response.NAMES || []; // Store names globally
+            displayNames(shareholderNames); // Display all names initially
         }, 
     })
 }
+
+// Function to display names in the list container
+function displayNames(names) {
+    $("#shNamesList").empty();
+    
+    if (names.length > 0) {
+        $.each(names, function(key, value){
+            const isSelected = selectedName === value["fullname"] ? "selected-name" : "";
+            $("#shNamesList").append(`
+                <div class="list-group-item ${isSelected}" data-name="${value["fullname"]}">
+                    ${value["fullname"]}
+                </div>
+            `);
+        });
+    } else {
+        $("#shNamesList").append(`
+            <div class="list-group-item text-muted">
+                No matching shareholders found
+            </div>
+        `);
+    }
+}
+
+// Handle input in search field - filter the list
+$('#shNames').on('input', function() {
+    const searchTerm = $(this).val().toLowerCase();
+    
+    if (searchTerm.length === 0) {
+        // Show all names when search is empty
+        displayNames(shareholderNames);
+    } else {
+        // Filter names based on search term
+        const filteredNames = shareholderNames.filter(name => 
+            name["fullname"].toLowerCase().includes(searchTerm)
+        );
+        displayNames(filteredNames);
+    }
+});
+
+// Handle click on list items
+$(document).on('click', '#shNamesList .list-group-item', function() {
+    const name = $(this).data('name');
+    if (name) {
+        selectedName = name;
+        $('#shNames').val(name);
+        
+        // Update visual selection
+        $('#shNamesList .list-group-item').removeClass('selected-name');
+        $(this).addClass('selected-name');
+        
+        // Load the shareholder list
+        LoadShareHolderList(name);
+    }
+});
 
 function LoadShareHolderList(name){
     $.ajax({
@@ -175,7 +225,9 @@ $('#addNew').on('click', function() {
     $('#submitButton').show();  
     $('#submitButton').prop('disabled', false);
     $("#printCert").prop('disabled', true);
-    $("#shNames").val("");
+    $("#shNames").val(""); // Clear search field
+    selectedName = ""; // Clear selected name
+    $('#shNamesList .list-group-item').removeClass('selected-name'); // Remove selection highlight
     $("#shareholderTbl tbody tr").removeClass("selected");
     if ( $.fn.DataTable.isDataTable( '#shareholderTbl' ) ) {
         $('#shareholderTbl').DataTable().clear();
