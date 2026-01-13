@@ -1,18 +1,15 @@
 var shareholderTbl;
-var shareholderNames = []; // Store names globally
-var selectedName = ""; // Track selected name
+var shareholderNames = [];
+var selectedName = "";
 
-// $("#shNames").select2({
-//     width: '100%',
-// });
-
+// Typeahead for the other name field (kept as in original)
 $('.searchName').typeahead({
     source: function(name, result){
         $.ajax({
-        url:"../../routes/profiling/shareholderinfo.route.php",
-        type:"POST",
-        data:{action:"searchNames", name:name},
-        dataType:"JSON",
+            url:"../../routes/profiling/shareholderinfo.route.php",
+            type:"POST",
+            data:{action:"searchNames", name:name},
+            dataType:"JSON",
             success:function(data){
                 result($.map(data, function(item){
                     return item;
@@ -22,6 +19,7 @@ $('.searchName').typeahead({
     }
 });
 
+// Initial load
 LoadShareHolderNames();
 
 function LoadShareHolderNames(){
@@ -30,21 +28,17 @@ function LoadShareHolderNames(){
         type:"POST",
         data:{action:"LoadShareHolderNames"},
         dataType:"JSON",
-        beforeSend:function(){
-        },
         success:function(response){
-            shareholderNames = response.NAMES || []; // Store names globally
-            displayNames(shareholderNames); // Display all names initially
-        }, 
-    })
+            shareholderNames = response.NAMES || [];
+            displayNames(shareholderNames);
+        }
+    });
 }
 
-// Function to display names in the list container
 function displayNames(names) {
     $("#shNamesList").empty();
-    
     if (names.length > 0) {
-        $.each(names, function(key, value){
+        $.each(names, function(_, value){
             const isSelected = selectedName === value["fullname"] ? "selected-name" : "";
             $("#shNamesList").append(`
                 <div class="list-group-item ${isSelected}" data-name="${value["fullname"]}">
@@ -53,44 +47,30 @@ function displayNames(names) {
             `);
         });
     } else {
-        $("#shNamesList").append(`
-            <div class="list-group-item text-muted">
-                No matching shareholders found
-            </div>
-        `);
+        $("#shNamesList").append(`<div class="list-group-item text-muted">No matching shareholders found</div>`);
     }
 }
 
-// Handle input in search field - filter the list
+// Filter as you type
 $('#shNames').on('input', function() {
-    const searchTerm = $(this).val().toLowerCase();
-    
-    if (searchTerm.length === 0) {
-        // Show all names when search is empty
+    const term = $(this).val().toLowerCase();
+    if (!term) {
         displayNames(shareholderNames);
-    } else {
-        // Filter names based on search term
-        const filteredNames = shareholderNames.filter(name => 
-            name["fullname"].toLowerCase().includes(searchTerm)
-        );
-        displayNames(filteredNames);
+        return;
     }
+    const filtered = shareholderNames.filter(n => n["fullname"].toLowerCase().includes(term));
+    displayNames(filtered);
 });
 
-// Handle click on list items
+// Click a name -> select and load table
 $(document).on('click', '#shNamesList .list-group-item', function() {
     const name = $(this).data('name');
-    if (name) {
-        selectedName = name;
-        $('#shNames').val(name);
-        
-        // Update visual selection
-        $('#shNamesList .list-group-item').removeClass('selected-name');
-        $(this).addClass('selected-name');
-        
-        // Load the shareholder list
-        LoadShareHolderList(name);
-    }
+    if (!name) return;
+    selectedName = name;
+    $('#shNames').val(name);
+    $('#shNamesList .list-group-item').removeClass('selected-name');
+    $(this).addClass('selected-name');
+    LoadShareHolderList(name);
 });
 
 function LoadShareHolderList(name){
@@ -100,16 +80,15 @@ function LoadShareHolderList(name){
         data:{action:"LoadShareHolderList", name:name},
         dataType:"JSON",
         beforeSend:function(){
-            if ( $.fn.DataTable.isDataTable( '#shareholderTbl' ) ) {
+            if ($.fn.DataTable.isDataTable('#shareholderTbl')) {
                 $('#shareholderTbl').DataTable().clear();
-                $('#shareholderTbl').DataTable().destroy(); 
+                $('#shareholderTbl').DataTable().destroy();
             }
             Cancel();
         },
         success:function(response){
-
-        $("#shareholderList").empty();
-            $.each(response.LIST,function(key,value){
+            $("#shareholderList").empty();
+            $.each(response.LIST,function(_,value){
                 $("#shareholderList").append(`
                     <tr>
                         <td>${value["shareholderNo"]}</td>
@@ -120,7 +99,6 @@ function LoadShareHolderList(name){
                     </tr>
                 `);
             });
-
             shareholderTbl = $('#shareholderTbl').DataTable({
                 pageLength: 5,
                 searching:false,
@@ -130,10 +108,11 @@ function LoadShareHolderList(name){
                 paging:true,
                 responsive:true,
             });
-        }, 
-    })
+        }
+    });
 }
 
+// Row click handler (unchanged)
 $('#shareholderTbl tbody').on('click', 'tr',function(e){
     let classList = e.currentTarget.classList;
     if (classList.contains('selected')) {
@@ -153,7 +132,6 @@ $('#shareholderTbl tbody').on('click', 'tr',function(e){
     $('#contact_number').prop('disabled', true).val('');
     $('#email').prop('disabled', true).val('');
     $('#facebook_account').prop('disabled', true).val('');
-    // $('#age').prop('disabled', true);
     $('#shareholder_type').prop('disabled', true).val('');
     $('#type').prop('disabled', true).val('');
     $('#noofshare').prop('disabled', true).val('');
@@ -162,7 +140,6 @@ $('#shareholderTbl tbody').on('click', 'tr',function(e){
     $('#emp_resign').prop('disabled', true);
     $("#emp_resign").prop('checked', false);
 
-    // Enable edit and update buttons, and show cancel button
     $("#printCert").prop('disabled', false);
     $('#addNew').show().prop('disabled', true);
     $('#cancel').prop('hidden', false).prop('disabled', false);
@@ -170,7 +147,6 @@ $('#shareholderTbl tbody').on('click', 'tr',function(e){
     $('#submitButton').hide();
 
     var shareholderNo = data[0];
-
     $('#shareholderID').val(shareholderNo);
 
     $.ajax({
@@ -179,9 +155,7 @@ $('#shareholderTbl tbody').on('click', 'tr',function(e){
         data: { action: "getShareholderInfo", shareholderNo: shareholderNo },
         dataType: 'JSON',
         success: function(response) {
-
             var INFO = response.INFO;
-
             $('#shareID').val(INFO.id);
             $('#shareholderID').val(INFO.shareholderNo);
             $("#president").prop('checked', INFO.OtherSignatories === "Yes");
@@ -203,6 +177,7 @@ $('#shareholderTbl tbody').on('click', 'tr',function(e){
     });
 });
 
+// Add new (unchanged)
 $('#addNew').on('click', function() {
     gnrtCertID();
     gnrtSID();
@@ -212,7 +187,6 @@ $('#addNew').on('click', function() {
     $('#contact_number').prop('disabled', false);
     $('#email').prop('disabled', false);
     $('#facebook_account').prop('disabled', false);
-    // $('#age').prop('disabled', false);
     $('#shareholder_type').prop('disabled', false);
     $('#type').prop('disabled', false);
     $('#noofshare').prop('disabled', false);
@@ -225,34 +199,33 @@ $('#addNew').on('click', function() {
     $('#submitButton').show();  
     $('#submitButton').prop('disabled', false);
     $("#printCert").prop('disabled', true);
-    $("#shNames").val(""); // Clear search field
-    selectedName = ""; // Clear selected name
-    $('#shNamesList .list-group-item').removeClass('selected-name'); // Remove selection highlight
+    $("#shNames").val("");
+    selectedName = "";
+    $('#shNamesList .list-group-item').removeClass('selected-name');
     $("#shareholderTbl tbody tr").removeClass("selected");
-    if ( $.fn.DataTable.isDataTable( '#shareholderTbl' ) ) {
+    if ($.fn.DataTable.isDataTable('#shareholderTbl')) {
         $('#shareholderTbl').DataTable().clear();
-        $('#shareholderTbl').DataTable().destroy(); 
+        $('#shareholderTbl').DataTable().destroy();
     }
 });
 
+// Edit (unchanged)
 $('#editButton').on('click', function() {
     $('#president').prop('disabled', false);
     $('#shareholderName').prop('disabled', false);
     $('#contact_number').prop('disabled', false);
     $('#email').prop('disabled', false);
     $('#facebook_account').prop('disabled', false);
-    // $('#age').prop('disabled', false);
     $('#shareholder_type').prop('disabled', false);
     $('#type').prop('disabled', false);
     $('#noofshare').prop('disabled', false);
     $('#amount_share').prop('disabled', true);
     $('#cert_no').prop('disabled', true);
-    $('#emp_resign').prop('disabled', false)
+    $('#emp_resign').prop('disabled', false);
     $('#cancel').prop('hidden', false);
     $('#cancel').prop('disabled', false);
     $('#submitButton').show();
     $('#submitButton').prop('disabled', false);
-
     $('#cancel').prop('hidden', false);
     $('#cancel').prop('disabled', false);
     $('#submitButton').hide();
@@ -270,7 +243,6 @@ function Cancel() {
     $('#contact_number').prop('disabled', true).val('');
     $('#email').prop('disabled', true).val('');
     $('#facebook_account').prop('disabled', true).val('');
-    // $('#age').prop('disabled', true);
     $('#shareholder_type').prop('disabled', true).val('');
     $('#type').prop('disabled', true).val('');
     $('#noofshare').prop('disabled', true).val('');
@@ -287,11 +259,12 @@ function Cancel() {
     $("#shareholderTbl tbody tr").removeClass("selected");
 }
 
+// Config modal (unchanged)
 $('#ConfigurationBtn').on('click', function() {
     $.ajax({
         url: '../../routes/profiling/shareholderinfo.route.php',
         method: 'POST',
-        data: { action: "getShareholderConfig",},
+        data: { action: "getShareholderConfig" },
         dataType: 'JSON',
         success: function(response) {
             var certNo = response.certNo[0];
@@ -299,7 +272,6 @@ $('#ConfigurationBtn').on('click', function() {
             var SIGN2 = response.SIGN2[0];
             var SIGNSUB2 = response.SIGNSUB2[0];
 
-            console.log(certNo.Value);
             $('#signatory1Name').val(SIGN1.Value);
             $('#signatory1Desig').val(SIGN1.SubValue);
             $('#signatory2Name').val(SIGN2.Value);
@@ -307,15 +279,12 @@ $('#ConfigurationBtn').on('click', function() {
             $('#signatorySub2Name').val(SIGNSUB2.Value);
             $('#signatorySub2Desig').val(SIGNSUB2.SubValue);
             $('#currentCertNo').val(certNo.Value);
-        },
-        error: function(error) {
-            console.error('Error fetching supplier info:', error);
         }
     });
-    
     $("#configurationMDL").modal("show");
 });
 
+// Submit new (unchanged)
 $("#submitButton").on("click",function(){
     $('#shareholderID').prop('disabled', false);
     $('#amount_share').prop('disabled', false);
@@ -333,7 +302,6 @@ $("#submitButton").on("click",function(){
         showLoaderOnConfirm: true,
         confirmButtonColor: '#435ebe',
         confirmButtonText: 'Yes, proceed!',
-        // allowOutsideClick: false,
         preConfirm: function() {
             return $.ajax({
                 url: "../../routes/profiling/shareholderinfo.route.php",
@@ -341,40 +309,26 @@ $("#submitButton").on("click",function(){
                 data: formData,
                 processData: false,
                 contentType: false,
-                dataType: 'JSON',
-                beforeSend: function() {
-                    console.log('Processing Request...')
-                },
-                success: function(response) {
-                },
+                dataType: 'JSON'
             });
         },
     }).then(function(result) {
         if (result.isConfirmed) {
             if (result.value.STATUS == 'success') {
-                Swal.fire({
-                    icon: "success",
-                    title: "Success",
-                    text: result.value.MESSAGE,
-                });
+                Swal.fire({ icon: "success", title: "Success", text: result.value.MESSAGE });
                 LoadShareHolderNames();
                 Cancel();
-                
-            } else if (result.value.STATUS != 'success') {
-                Swal.fire({
-                    icon: "error",
-                    title: "Error",
-                    text: result.value.MESSAGE,
-                });
+            } else {
+                Swal.fire({ icon: "error", title: "Error", text: result.value.MESSAGE });
                 $('#shareholderID').prop('disabled', true);
                 $('#amount_share').prop('disabled', true);
                 $('#cert_no').prop('disabled', true);
             }
-            
         }
     });
-})
+});
 
+// Update (unchanged)
 $("#updateButton").on("click",function(){
     $('#shareID').prop('disabled', false);
     $('#amount_share').prop('disabled', false);
@@ -392,7 +346,6 @@ $("#updateButton").on("click",function(){
         showLoaderOnConfirm: true,
         confirmButtonColor: '#435ebe',
         confirmButtonText: 'Yes, proceed!',
-        // allowOutsideClick: false,
         preConfirm: function() {
             return $.ajax({
                 url: "../../routes/profiling/shareholderinfo.route.php",
@@ -400,41 +353,27 @@ $("#updateButton").on("click",function(){
                 data: formData,
                 processData: false,
                 contentType: false,
-                dataType: 'JSON',
-                beforeSend: function() {
-                    console.log('Processing Request...')
-                },
-                success: function(response) {
-                },
+                dataType: 'JSON'
             });
         },
     }).then(function(result) {
         if (result.isConfirmed) {
             if (result.value.STATUS == 'success') {
-                Swal.fire({
-                    icon: "success",
-                    title: "Success",
-                    text: result.value.MESSAGE,
-                });
+                Swal.fire({ icon: "success", title: "Success", text: result.value.MESSAGE });
                 LoadShareHolderNames();
                 Cancel();
-            } else if (result.value.STATUS != 'success') {
-                Swal.fire({
-                    icon: "error",
-                    title: "Error",
-                    text: result.value.MESSAGE,
-                });
+            } else {
+                Swal.fire({ icon: "error", title: "Error", text: result.value.MESSAGE });
                 $('#shareID').prop('disabled', true);
                 $('#amount_share').prop('disabled', true);
                 $('#cert_no').prop('disabled', true);
             }
-            
         }
     });
-})
+});
 
+// Update config (unchanged)
 $("#updateConfigBtn").on("click",function(){
-    
     var form = $('#configurationForm')[0];
     var formData = new FormData(form);
     formData.append('action', 'UpdateConfig');
@@ -447,7 +386,6 @@ $("#updateConfigBtn").on("click",function(){
         showLoaderOnConfirm: true,
         confirmButtonColor: '#435ebe',
         confirmButtonText: 'Yes, proceed!',
-        // allowOutsideClick: false,
         preConfirm: function() {
             return $.ajax({
                 url: "../../routes/profiling/shareholderinfo.route.php",
@@ -455,47 +393,26 @@ $("#updateConfigBtn").on("click",function(){
                 data: formData,
                 processData: false,
                 contentType: false,
-                dataType: 'JSON',
-                beforeSend: function() {
-                    console.log('Processing Request...')
-                },
-                success: function(response) {
-                },
+                dataType: 'JSON'
             });
         },
     }).then(function(result) {
         if (result.isConfirmed) {
             if (result.value.STATUS == 'success') {
-                Swal.fire({
-                    icon: "success",
-                    title: "Success",
-                    text: result.value.MESSAGE,
-                });
-            } else if (result.value.STATUS != 'success') {
-                Swal.fire({
-                    icon: "error",
-                    title: "Error",
-                    text: result.value.MESSAGE,
-                });
+                Swal.fire({ icon: "success", title: "Success", text: result.value.MESSAGE });
+            } else {
+                Swal.fire({ icon: "error", title: "Error", text: result.value.MESSAGE });
             }
-            
         }
     });
-})
+});
 
 function PrintReport(){
     let shareholderNo = $("#shareholderID").val();
-  
-
     if(shareholderNo == ""){
-
-        Swal.fire({
-            icon:"warning",
-            text:"No shareholder info retrieved"
-        })
+        Swal.fire({ icon:"warning", text:"No shareholder info retrieved" });
         return;
     }
-
     Swal.fire({
         title: 'Select an Format',
         html: `
@@ -516,7 +433,6 @@ function PrintReport(){
     }).then((result) => {
         if (result.isConfirmed) {
             const format = result.value;
-
             $.ajax({
                 url:"../../routes/profiling/shareholderinfo.route.php",
                 type:"POST",
@@ -524,9 +440,7 @@ function PrintReport(){
                 dataType:"JSON",
                 success:function(response){
                     if(response.STATUS != "SUCCESS"){
-                        Swal.showValidationMessage(
-                            response.MESSAGE,
-                        )
+                        Swal.showValidationMessage(response.MESSAGE)
                     }
                     if(response.STATUS == "SUCCESS"){
                         window.open("../../routes/profiling/shareholderinfo.route.php?type=PrintCertificate");
@@ -535,8 +449,6 @@ function PrintReport(){
             });
         }
     });
-      
-
 }
 
 function gnrtCertID(){
@@ -545,13 +457,10 @@ function gnrtCertID(){
         type: 'POST',
         data: {action:"gnrtCertID"},
         dataType: 'JSON',
-        beforeSend: function() {
-            console.log(`Certificate No...`)
-        },
         success: function(response) {
             $('#cert_no').val(response.certNo);
             $('#actualNo').val(response.actualNo);
-        },
+        }
     });
 }
 
@@ -561,12 +470,9 @@ function gnrtSID(){
         type: 'POST',
         data: {action:"gnrtSID"},
         dataType: 'JSON',
-        beforeSend: function() {
-            console.log(`Generating Series No...`)
-        },
         success: function(response) {
             $('#shareholderID').val(response.shareNo);
-        },
+        }
     });
 }
 
