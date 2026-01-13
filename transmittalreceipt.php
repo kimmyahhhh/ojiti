@@ -497,11 +497,100 @@
 
                 // Date picker configuration: Carrier and Received By dates - no future dates
                 setTimeout(function() {
-                    $('#dateCarrier, #dateReceivedBy').datetimepicker({
+                    // Initialize carrier date picker
+                    $('#dateCarrier').datetimepicker({
+                        format: 'Y-m-d',
+                        timepicker: false,
+                        maxDate: 0, // 0 means today, prevents future dates
+                        scrollInput: false,
+                        onSelectDate: function(ct, $input) {
+                            // When carrier date is selected, update received date min date
+                            var carrierDate = $input.val();
+                            updateReceivedDateMinDate(carrierDate);
+                        }
+                    });
+                    
+                    // Initialize received date picker
+                    $('#dateReceivedBy').datetimepicker({
                         format: 'Y-m-d',
                         timepicker: false,
                         maxDate: 0, // 0 means today, prevents future dates
                         scrollInput: false
+                    });
+                    
+                    // Function to update received date minimum date
+                    function updateReceivedDateMinDate(carrierDate) {
+                        var receivedDate = $('#dateReceivedBy').val();
+                        
+                        if (carrierDate) {
+                            // Update received date picker to have minimum date of carrier date
+                            try {
+                                $('#dateReceivedBy').datetimepicker('destroy');
+                            } catch(e) {
+                                // Ignore if already destroyed
+                            }
+                            
+                            $('#dateReceivedBy').datetimepicker({
+                                format: 'Y-m-d',
+                                timepicker: false,
+                                maxDate: 0, // No future dates
+                                minDate: carrierDate, // Must be after or equal to carrier date
+                                scrollInput: false
+                            });
+                            
+                            // If received date is already set and is before carrier date, clear it
+                            if (receivedDate) {
+                                var carrierDateObj = new Date(carrierDate);
+                                var receivedDateObj = new Date(receivedDate);
+                                
+                                if (receivedDateObj < carrierDateObj) {
+                                    alert('Received date must be after or equal to carrier date.');
+                                    $('#dateReceivedBy').val('');
+                                }
+                            }
+                        } else {
+                            // If carrier date is cleared, remove min date restriction
+                            try {
+                                $('#dateReceivedBy').datetimepicker('destroy');
+                            } catch(e) {
+                                // Ignore if already destroyed
+                            }
+                            
+                            $('#dateReceivedBy').datetimepicker({
+                                format: 'Y-m-d',
+                                timepicker: false,
+                                maxDate: 0, // No future dates
+                                scrollInput: false
+                            });
+                        }
+                    }
+                    
+                    // When carrier date changes, update received date minimum date
+                    $('#dateCarrier').on('change', function() {
+                        var carrierDate = $(this).val();
+                        updateReceivedDateMinDate(carrierDate);
+                    });
+                    
+                    // Validate received date when it changes
+                    $('#dateReceivedBy').on('change', function() {
+                        var carrierDate = $('#dateCarrier').val();
+                        var receivedDate = $(this).val();
+                        
+                        if (carrierDate && receivedDate) {
+                            // Compare dates
+                            var carrierDateObj = new Date(carrierDate);
+                            var receivedDateObj = new Date(receivedDate);
+                            
+                            // Set time to 00:00:00 for accurate date comparison
+                            carrierDateObj.setHours(0, 0, 0, 0);
+                            receivedDateObj.setHours(0, 0, 0, 0);
+                            
+                            if (receivedDateObj < carrierDateObj) {
+                                alert('Received date must be after or equal to carrier date.');
+                                $(this).val('');
+                                return false;
+                            }
+                        }
                     });
                 }, 100);
             });
