@@ -337,7 +337,7 @@
                                             <label for="">Quantity:</label>
                                         </div>
                                         <div class="col-md-9">
-                                            <input type="number" class="form-control" name="quantity" id="quantityInput" placeholder="0" min="0" step="0.01" required>
+                                            <input type="text" class="form-control" name="quantity" id="quantityInput" placeholder="0">
                                         </div>
                                     </div>
                                 </div>
@@ -349,7 +349,7 @@
                                             <input class="form-check-input" type="checkbox" name="editSRPtoggle" id="editSRPtoggle" onclick="editSRPToggle()">
                                         </div>
                                         <div class="col-md-9">
-                                            <input type="number" class="form-control" name="editSRP" disabled id="editSRP" min="0" step="0.01">
+                                            <input type="text" class="form-control" name="editSRP" disabled id="editSRP">
                                         </div>
                                     </div>
                                     <div class="row mt-2" hidden>
@@ -434,12 +434,12 @@
             
             
                                 <div class="col-md-6">
-                                    <label for="transmittalDateTo" class="form-label mt-2">To</label>
-                                    <input type="date" class="form-control" id="transmittalDateTo" name="transmittalDateTo" max="<?php echo date('Y-m-d'); ?>" required>
+                                    <label for="Firstname" class="form-label mt-2">To</label>
+                                    <input type="date" class="form-control" placeholder="" required>
                                 </div>
                                 <div class="col-md-6">
-                                    <label for="transmittalDateFrom" class="form-label mt-2">From</label>
-                                    <input type="date" class="form-control" id="transmittalDateFrom" name="transmittalDateFrom" max="<?php echo date('Y-m-d'); ?>" required>
+                                    <label for="Firstname" class="form-label mt-2">From</label>
+                                    <input type="date" class="form-control" required>
                                 </div>
                             </div>
                         </div>
@@ -524,6 +524,7 @@
 
         <script src="../../assets/select2/js/select2.full.min.js"></script>
         <script src="../../js/inventorymanagement/outgoinginventory.js?<?= time() ?>"></script>
+        <script src="./orderconfirmation.js?<?= time() ?>"></script>
 
     </body>
 </html>
@@ -532,72 +533,6 @@
     echo '<script> window.location.href = "../../login.php"; </script>';
   }
 ?>
-
-<script>
-    // Validation helpers
-    document.addEventListener('DOMContentLoaded', function () {
-        const today = new Date().toISOString().split('T')[0];
-
-        // Transmittal modal dates - no future dates
-        ['transmittalDateTo', 'transmittalDateFrom'].forEach(function(id) {
-            const el = document.getElementById(id);
-            if (el) {
-                el.setAttribute('max', today);
-                el.addEventListener('change', function(e) {
-                    if (e.target.value && e.target.value > today) {
-                        e.target.value = today;
-                        alert('Date cannot be in the future.');
-                    }
-                });
-            }
-        });
-
-        // Recipient (TO) - letters and spaces only
-        const recipient = document.getElementById('recipient');
-        if (recipient) {
-            recipient.addEventListener('input', function(e) {
-                e.target.value = e.target.value.replace(/[^a-zA-Z\s]/g, '');
-            });
-        }
-
-        // Quantity - numbers with up to 2 decimals
-        const quantityInput = document.getElementById('quantityInput');
-        if (quantityInput) {
-            quantityInput.addEventListener('input', function(e) {
-                let value = e.target.value.replace(/[^0-9.]/g, '');
-                const parts = value.split('.');
-                if (parts.length > 2) {
-                    value = parts[0] + '.' + parts.slice(1).join('');
-                }
-                if (parts.length === 2 && parts[1].length > 2) {
-                    value = parts[0] + '.' + parts[1].substring(0,2);
-                }
-                e.target.value = value;
-            });
-            quantityInput.addEventListener('blur', function(e) {
-                if (e.target.value !== '' && !isNaN(e.target.value)) {
-                    e.target.value = parseFloat(e.target.value).toFixed(2);
-                }
-            });
-        }
-
-        // Edit SRP - numbers only (allow two decimals)
-        const editSRP = document.getElementById('editSRP');
-        if (editSRP) {
-            editSRP.addEventListener('input', function(e) {
-                let value = e.target.value.replace(/[^0-9.]/g, '');
-                const parts = value.split('.');
-                if (parts.length > 2) {
-                    value = parts[0] + '.' + parts.slice(1).join('');
-                }
-                if (parts.length === 2 && parts[1].length > 2) {
-                    value = parts[0] + '.' + parts[1].substring(0,2);
-                }
-                e.target.value = value;
-            });
-        }
-    });
-</script>
 
 <script>
     // Function to calculate and update SRP based on quantity and SRP from Product Summary
@@ -827,24 +762,6 @@
         var warranty = document.getElementById("warranty").value;
         var vat = document.getElementById("vat").value;
         var vatsales = document.getElementById("vatsales").value;
-        var radioSelected = document.querySelector('input[name="inlineRadioOptions"]:checked');
-        var itemSelected = document.getElementById("itemSelect").value;
-
-        // Validate product information is complete
-        if (!branch || !type || !category || !radioSelected || !itemSelected || !SIno) {
-            alert("Please complete the Product Information (Branch, Type, Category, Select by, Select, and SI No.) before adding.");
-            return;
-        }
-
-        // Validate quantity and SRP fields
-        if (!quantity || isNaN(quantity)) {
-            alert("Please enter a valid quantity.");
-            return;
-        }
-        if (srp === "" || isNaN(srp)) {
-            alert("Please enter a valid SRP.");
-            return;
-        }
 
         var newRow = document.createElement("tr");
 
@@ -887,11 +804,6 @@
     function saveData() {
         var tableBody = document.getElementById("table1").querySelector("tbody");
         var dataArray = [];
-
-        if (!tableBody || tableBody.querySelectorAll("tr").length === 0) {
-            alert("Please add product information before submitting.");
-            return;
-        }
 
         tableBody.querySelectorAll("tr").forEach(function(row) {
             var cells = row.querySelectorAll("td");
