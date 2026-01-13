@@ -19,37 +19,18 @@
         <!-- loader END -->
 
         <style>
-            td {
-                font-weight: 400;
-            }
-        
+            td { font-weight: 400; }
             form {
                 padding: 20px;
                 background-color: white;
                 border-radius: 10px;
             }
-        
-            label,
-            th {
-                color: #090909;
-            }
-        
-            main {
-                background-color: #EAEAF6;
-            }
-        
-            th {
-                font-weight: bold;
-                color: #090909;
-                position: sticky;
-                top: 0;
-            }
-        
-            .selected td {
-                background-color: lightgray;
-            }
+            label, th { color: #090909; }
+            main { background-color: #EAEAF6; }
+            th { font-weight: bold; color: #090909; position: sticky; top: 0; }
+            .selected td { background-color: lightgray; }
 
-            /* Names list styles (inside table footer) */
+            /* Names list inside table footer */
             #shNamesList {
                 border: 1px solid #ced4da;
                 border-radius: 0.375rem;
@@ -58,7 +39,6 @@
                 overflow-y: auto;
                 margin-top: 5px;
             }
-
             #shNamesList .list-group-item {
                 cursor: pointer;
                 padding: 0.5rem 0.75rem;
@@ -67,15 +47,8 @@
                 transition: background-color 0.2s;
                 text-align: left;
             }
-
-            #shNamesList .list-group-item:hover {
-                background-color: #f8f9fa;
-            }
-
-            #shNamesList .list-group-item:last-child {
-                border-bottom: none;
-            }
-
+            #shNamesList .list-group-item:hover { background-color: #f8f9fa; }
+            #shNamesList .list-group-item:last-child { border-bottom: none; }
             #shNamesList .list-group-item.selected-name {
                 background-color: #e7f3ff;
                 font-weight: 500;
@@ -84,7 +57,7 @@
 
         <?php
             include('../../includes/pages.sidebar.php');
-            include('../../includes/pages.navbar.php');
+            include('../../includes.pages.navbar.php');
         ?>
 
             <div class="container-fluid mt-1">
@@ -104,7 +77,7 @@
                             </div>
                             <hr style="height: 1px">
 
-                            <!-- SEARCH BAR ON TOP (OUTSIDE TABLE) -->
+                            <!-- SEARCH BAR ON TOP -->
                             <div class="row mb-3">
                                 <div class="form-group row">
                                     <label class="col-sm-auto col-form-label">Name</label>
@@ -138,7 +111,7 @@
                                     <tr>
                                         <td colspan="5">
                                             <div id="shNamesList" class="list-group">
-                                                <!-- Names will be populated here by JS -->
+                                                <!-- Names populated by JS -->
                                             </div>
                                         </td>
                                     </tr>
