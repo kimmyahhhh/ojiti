@@ -88,11 +88,17 @@
                             <table id="CustomerInfoTbl" class="table table-bordered text-center" style="width:100%;">
                                 <thead>
                                     <tr>
-                                        <th style="width:20%;text-align:center">Customer No.</th>
-                                        <th style="width:20%;text-align:center">Name</th>
-                                        <th style="width:20%;text-align:center">Customer Type</th>
-                                        <th style="width:20%;text-align:center">Mobile Number</th>
-                                        <th style="width:20%;text-align:center">Email</th>
+                                        <th style="text-align:center">Customer No.</th>
+                                        <th style="text-align:center">Name</th>
+                                        <th style="text-align:center">Customer Type</th>
+                                        <th style="text-align:center">Mobile Number</th>
+                                        <th style="text-align:center">Email</th>
+                                        <th style="text-align:center">Birthdate</th>
+                                        <th style="text-align:center">Age</th>
+                                        <th style="text-align:center">Gender</th>
+                                        <th style="text-align:center">Company Name</th>
+                                        <th style="text-align:center">Address</th>
+                                        <th style="text-align:center">Product/Service</th>
                                     </tr>
                                 </thead>
                                 <tbody id="CustomerInfoList">
@@ -130,7 +136,8 @@
                                 </div>
                                 <div class="col-md-4 mb-3">
                                     <label for="customerNo" class="form-label">Customer No</label>
-                                    <input type="text" name="customerNo" class="form-control" id="customerNo" placeholder="Customer No" disabled value="">
+                                    <input type="text" name="customerNo" class="form-control" id="customerNo" placeholder="Customer No" required disabled value="">
+                                    <div class="invalid-feedback">Please enter customer number</div>
                                 </div>
                             </div>
                             <div class="row">
@@ -153,42 +160,44 @@
                             <div class="row mt-2">
                                 <div class="col-md-4">
                                     <label for="birthdate" class="form-label">Birthdate</label>
-                                    <input type="date" name="birthdate" class="form-control" id="birthdate" max="<?php echo date('Y-m-d'); ?>" disabled>
+                                    <input type="date" name="birthdate" class="form-control" id="birthdate" max="<?php echo date('Y-m-d'); ?>" required disabled>
                                     <div class="invalid-feedback">Please enter a valid birthdate (cannot be a future date)</div>
                                 </div>
                                 <div class="col-md-2">
                                     <label for="age" class="form-label">Age</label>
-                                    <input type="text" name="age" class="form-control" id="age" disabled>
+                                    <input type="text" name="age" class="form-control" id="age" required disabled readonly>
                                     <div class="invalid-feedback">Please enter a valid age</div>
                                 </div>
                                 <div class="col-md-2">
                                     <label for="gender" class="form-label">Gender</label>
-                                    <select class="form-select mb-2" id="gender" name="gender" aria-label="Default select example"  disabled>
+                                    <select class="form-select mb-2" id="gender" name="gender" aria-label="Default select example" required disabled>
                                     <option value="" selected>Select</option>
                                     </select>
                                     <div class="invalid-feedback">Please select gender</div>
                                 </div>
                                 <div class="col-md-4">
-                                    <label for="mobileNumber" class="form-label">Mobile Number</label>
-                                    <input type="text" name="mobileNumber" class="form-control" id="mobileNumber" placeholder="09*********"  disabled maxlength="11">
-                                    <div class="invalid-feedback">Please enter a valid mobile number</div>
+                                    <label for="mobileNumber" class="form-label">Mobile Number <span class="text-danger">*</span></label>
+                                    <input type="text" name="mobileNumber" class="form-control" id="mobileNumber" placeholder="09*********" disabled maxlength="11">
+                                    <div class="invalid-feedback">Please enter a valid mobile number (required if email is not provided)</div>
+                                    <small class="text-muted">Either Mobile Number or Email is required</small>
                                 </div>
                             </div>
                             <div class="row mt-2">
                                 <div class="col-md-4">
                                     <label for="companyName" class="form-label">Company Name</label>
-                                    <input type="text" name="companyName" id="companyName" class="form-control" placeholder="Company Name" disabled>
+                                    <input type="text" name="companyName" id="companyName" class="form-control" placeholder="Company Name" required disabled>
                                     <div class="invalid-feedback">Please enter a valid company name</div>
                                 </div>
                                 <div class="col-md-4">
-                                    <label for="email" class="form-label">Email Address</label>
-                                    <input type="email" name="email" class="form-control" id="email" placeholder="exmpl@gmail.com"  disabled>
-                                    <div class="invalid-feedback">Please enter a valid email address</div>
+                                    <label for="email" class="form-label">Email Address <span class="text-danger">*</span></label>
+                                    <input type="email" name="email" class="form-control" id="email" placeholder="exmpl@gmail.com" disabled>
+                                    <div class="invalid-feedback">Please enter a valid email address (required if mobile number is not provided)</div>
+                                    <small class="text-muted">Either Mobile Number or Email is required</small>
                                 </div>
                                 <div class="col-md-4 overflow-auto">
-                                    <label for="tin" class="form-label">TIN</label>
+                                    <label for="tin" class="form-label">TIN <span class="text-muted">(Optional)</span></label>
                                     <div class="input-group">
-                                        <input type="text" id="tin" name="tin" class="form-control tin-field" maxlength="16" placeholder="###-###-###-###"  disabled>
+                                        <input type="text" id="tin" name="tin" class="form-control tin-field" maxlength="16" placeholder="###-###-###-###" disabled>
                                     </div>
                                 </div>
                             </div>
@@ -198,36 +207,40 @@
                             <div class="row">
                                 <div class="col-md-3">
                                     <label for="Region" class="form-label">Region</label>
-                                    <select class="form-select mb-2" id="Region" name="Region" aria-label="Default select example"  disabled>
+                                    <select class="form-select mb-2" id="Region" name="Region" aria-label="Default select example" required disabled>
                                         <option value="" selected>Select</option>
                                     
                                     </select>
+                                    <div class="invalid-feedback">Please select region</div>
                                 </div>
                                 <div class="col-md-3">
                                     <label for="Province" class="form-label">Province</label>
-                                    <select class="form-select" id="Province" name="Province" aria-label="Default select example"  disabled>
+                                    <select class="form-select" id="Province" name="Province" aria-label="Default select example" required disabled>
                                         <option value="" selected>Select</option>
                                     
                                     </select>
+                                    <div class="invalid-feedback">Please select province</div>
                                 </div>
                                 <div class="col-md-3">
                                     <label for="CityTown" class="form-label">City/Town</label>
-                                    <select class="form-select" id="CityTown" name="CityTown" aria-label="Default select example"  disabled>
+                                    <select class="form-select" id="CityTown" name="CityTown" aria-label="Default select example" required disabled>
                                         <option value="" selected>Select</option>
                                         
                                     </select>
+                                    <div class="invalid-feedback">Please select city/town</div>
                                 </div>
                                 <div class="col-md-3">
                                     <label for="Barangay" class="form-label">Barangay</label>
-                                    <select class="form-select" id="Barangay" name="Barangay" aria-label="Default select example"  disabled>
+                                    <select class="form-select" id="Barangay" name="Barangay" aria-label="Default select example" required disabled>
                                         <option value="" selected>Select</option>
                                         
                                     </select>
+                                    <div class="invalid-feedback">Please select barangay</div>
                                 </div>
                                 <div class="row">
                                     <div class="col-md-6">
                                         <label for="street" class="form-label mt-2">Street/House No./ Zone</label>
-                                        <input type="text" class="form-control" id="street" name="street" placeholder="Street/House No./Zone" disabled>
+                                        <input type="text" class="form-control" id="street" name="street" placeholder="Street/House No./Zone" required disabled>
                                         <div class="invalid-feedback">
                                             Please enter street.
                                         </div>
@@ -239,7 +252,7 @@
                             <div class="row">
                                 <div class="col-md-6">
                                     <label for="productInfo" class="form-label mt-2">Product/Services Availed</label>
-                                    <input type="text" class="form-control" id="productInfo" name="productInfo" placeholder="Product/Service" disabled>
+                                    <input type="text" class="form-control" id="productInfo" name="productInfo" placeholder="Product/Service" required disabled>
                                     <div class="invalid-feedback">
                                         Please enter product/service.
                                     </div>
@@ -353,48 +366,107 @@
                 }
                 
                 e.target.value = value;
+                // Validate email/mobile requirement
+                validateEmailOrMobile();
             });
 
-            // Mobile Number validation on blur
-            document.getElementById('mobileNumber').addEventListener('blur', function(e) {
-                const value = e.target.value;
-                if (value && (value.length !== 11 || !value.startsWith('09'))) {
-                    e.target.setCustomValidity('Mobile number must start with 09 and be exactly 11 digits');
-                    e.target.classList.add('is-invalid');
-                } else {
-                    e.target.setCustomValidity('');
-                    e.target.classList.remove('is-invalid');
-                }
-            });
 
             // Company Name - only letters and spaces
             document.getElementById('companyName').addEventListener('input', function(e) {
                 e.target.value = e.target.value.replace(/[^a-zA-Z\s]/g, '');
             });
 
+            // Function to validate that either email or mobile number is provided
+            function validateEmailOrMobile() {
+                const emailInput = document.getElementById('email');
+                const mobileInput = document.getElementById('mobileNumber');
+                const emailValue = emailInput.value.trim();
+                const mobileValue = mobileInput.value.trim();
+
+                // Check email format if provided
+                if (emailValue && !emailValue.includes('@gmail.com')) {
+                    emailInput.setCustomValidity('Email must contain @gmail.com');
+                    emailInput.classList.add('is-invalid');
+                    return false;
+                }
+
+                // Check mobile format if provided
+                if (mobileValue && (mobileValue.length !== 11 || !mobileValue.startsWith('09'))) {
+                    mobileInput.setCustomValidity('Mobile number must start with 09 and be exactly 11 digits');
+                    mobileInput.classList.add('is-invalid');
+                    return false;
+                }
+
+                // At least one must be provided
+                if (!emailValue && !mobileValue) {
+                    emailInput.setCustomValidity('Either Email or Mobile Number is required');
+                    mobileInput.setCustomValidity('Either Email or Mobile Number is required');
+                    emailInput.classList.add('is-invalid');
+                    mobileInput.classList.add('is-invalid');
+                    return false;
+                } else {
+                    // Clear validation if at least one is provided
+                    if (emailValue && emailValue.includes('@gmail.com')) {
+                        emailInput.setCustomValidity('');
+                        emailInput.classList.remove('is-invalid');
+                    }
+                    if (mobileValue && mobileValue.length === 11 && mobileValue.startsWith('09')) {
+                        mobileInput.setCustomValidity('');
+                        mobileInput.classList.remove('is-invalid');
+                    }
+                    return true;
+                }
+            }
+
             // Email - must contain @gmail.com
             document.getElementById('email').addEventListener('input', function(e) {
-                const value = e.target.value;
-                if (value && !value.includes('@gmail.com')) {
-                    e.target.setCustomValidity('Email must contain @gmail.com');
-                    e.target.classList.add('is-invalid');
-                } else {
-                    e.target.setCustomValidity('');
-                    e.target.classList.remove('is-invalid');
-                }
+                validateEmailOrMobile();
             });
 
             // Email validation on blur
             document.getElementById('email').addEventListener('blur', function(e) {
+                validateEmailOrMobile();
+            });
+
+            // Mobile Number validation on blur - also check email/mobile requirement
+            document.getElementById('mobileNumber').addEventListener('blur', function(e) {
                 const value = e.target.value;
-                if (value && !value.includes('@gmail.com')) {
-                    e.target.setCustomValidity('Email must contain @gmail.com');
+                if (value && (value.length !== 11 || !value.startsWith('09'))) {
+                    e.target.setCustomValidity('Mobile number must start with 09 and be exactly 11 digits');
                     e.target.classList.add('is-invalid');
                 } else {
-                    e.target.setCustomValidity('');
-                    e.target.classList.remove('is-invalid');
+                    validateEmailOrMobile();
                 }
             });
+
+            // Validate on form submit
+            document.getElementById('customerinfo').addEventListener('submit', function(e) {
+                if (!validateEmailOrMobile()) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+            });
+
+            // Also validate when submit button is clicked
+            document.getElementById('submitButton').addEventListener('click', function(e) {
+                if (!validateEmailOrMobile()) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    document.getElementById('customerinfo').classList.add('was-validated');
+                }
+            });
+
+            // Also validate when update button is clicked
+            const updateButton = document.getElementById('updateButton');
+            if (updateButton) {
+                updateButton.addEventListener('click', function(e) {
+                    if (!validateEmailOrMobile()) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        document.getElementById('customerinfo').classList.add('was-validated');
+                    }
+                });
+            }
 
             // Street/House No./Zone - letters and numbers, max 3 numbers, no special characters
             document.getElementById('street').addEventListener('input', function(e) {
