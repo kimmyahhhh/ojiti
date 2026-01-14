@@ -95,7 +95,7 @@
                                     <div class="mb-2 row">
                                         <label class="col-sm-3 col-form-label" for="transactionDate">Transaction Date:</label>
                                         <div class="col-sm-8">
-                                            <input type="date" id="transactionDate" name="transactionDate" class="form-control" required>
+                                            <input type="date" id="transactionDate" name="transactionDate" class="form-control">
                                         </div>
                                     </div>
 
@@ -109,7 +109,7 @@
                                     <div class="mb-2 row">
                                         <label class="col-sm-3 col-form-label" for="isynBranch">Isyn Branch:</label>
                                         <div class="col-sm-8">
-                                            <select class="form-select" name="isynBranch" id="isynBranch" onchange="LoadBranch(this.value)" required>
+                                            <select class="form-select" name="isynBranch" id="isynBranch" onchange="LoadBranch(this.value)">
                                                 <option value="" selected>Select</option>
                                             </select>
                                         </div>
@@ -127,7 +127,7 @@
                                     <div class="mb-2 row">
                                         <label class="col-sm-3 col-form-label" for="type">Type</label>
                                         <div class="col-sm-8">
-                                            <select class="form-select" name="type" id="type" onchange="LoadCategory(this.value);" required>
+                                            <select class="form-select" name="type" id="type" onchange="LoadCategory(this.value);">
                                                 <option value="" selected>Select</option>
                                                 <!-- Populate options dynamically -->
                                             </select>
@@ -137,7 +137,7 @@
                                     <div class="mb-2 row">
                                         <label class="col-sm-3 col-form-label" for="category">Category:</label>
                                         <div class="col-sm-8">
-                                            <select class="form-select" aria-label="Category" name="category" id="category" onchange="LoadSerialProduct(this.value);" required>
+                                            <select class="form-select" aria-label="Category" name="category" id="category" onchange="LoadSerialProduct(this.value);">
                                                 <!-- <option value="" selected>Select</option> -->
                                                 <!-- Populate options dynamically -->
                                             </select>
@@ -167,7 +167,7 @@
                                     <div class="mb-2 row">
                                         <label class="col-sm-3 col-form-label" for="SerialProduct" id="SerialProdlbl">Serial:</label>
                                         <div class="col-sm-8">
-                                            <select id="SerialProduct" name="SerialProduct" class="form-select" onchange="LoadProductSINo(this.value);" required>
+                                            <select id="SerialProduct" name="SerialProduct" class="form-select" onchange="LoadProductSINo(this.value);">
                                             </select>
                                         </div>
                                     </div>
@@ -175,7 +175,7 @@
                                     <div class="mb-2 row">
                                         <label class="col-sm-3 col-form-label" for="SINo">Supplier SI:</label>
                                         <div class="col-sm-8">
-                                            <select id="SINo" name="SINo" class="form-select" onchange="LoadProductSummary();" required>
+                                            <select id="SINo" name="SINo" class="form-select" onchange="LoadProductSummary();">
                                             </select>
                                         </div>
                                     </div>
@@ -250,7 +250,7 @@
                                                         <input type="text" id="customerNameInput" class="form-control" name="customerNameInput" readonly>
                                                     </div>
                                                     <div id="customerNameSelectDiv" style="display:None;">
-                                                        <select id="customerNameSelect" class="form-select" name="customerNameSelect" onchange="LoadCustomerNameInfo(this.value);" required>
+                                                        <select id="customerNameSelect" class="form-select" name="customerNameSelect" onchange="LoadCustomerNameInfo(this.value);">
                                                             <option value="" selected disabled>Select</option>
                                                         </select>
                                                     </div>
@@ -342,10 +342,10 @@
                                             <div class="row">
                                                 <div class="col-md-6">
                                                     <label for="srpMerchSales" class="form-label mt-2">SRP:</label>
-                                                    <input type="text" id="srpMerchSales" name="srpMerchSales" class="form-control" placeholder="0.00" onchange="formatInput(this);" required>
+                                                    <input type="text" id="srpMerchSales" name="srpMerchSales" class="form-control" placeholder="0.00" onchange="formatInput(this);">
 
                                                     <label for="quantityMerchSales" class="form-label mt-2">Quantity:</label>
-                                                    <input type="number" name="quantityMerchSales" id="quantityMerchSales" class="form-control" placeholder="0" min="1" onchange="ComputeMerchandise();" required>
+                                                    <input type="number" name="quantityMerchSales" id="quantityMerchSales" class="form-control" placeholder="0" min="1" onchange="ComputeMerchandise();">
                                                     
                                                     <label for="vatMerchSales" class="form-label mt-2">DP:</label>
                                                     <input type="text" class="form-control" name="vatMerchSales" id="vatMerchSales" placeholder="0.00" disabled>
@@ -640,87 +640,5 @@
         }
 
         e.target.value = formattedValue;
-    });
-
-    // Customer Name - only letters and spaces (no numbers, no special characters)
-    document.addEventListener('DOMContentLoaded', function() {
-        const customerNameInput = document.getElementById('customerNameInput');
-        const customerNameSelect = document.getElementById('customerNameSelect');
-        
-        if (customerNameInput) {
-            customerNameInput.addEventListener('input', function(e) {
-                if (!e.target.readOnly) {
-                    e.target.value = e.target.value.replace(/[^a-zA-Z\s]/g, '');
-                }
-            });
-        }
-        
-        // Also validate when customer name is selected from dropdown and then edited
-        // This will be handled by the readonly attribute, but we add validation just in case
-    });
-
-    // Address - accept 2-3 digit numbers, period and comma, no other special characters
-    document.getElementById('fullAddress').addEventListener('input', function(e) {
-        let value = e.target.value;
-        
-        // Remove all characters except letters, numbers, spaces, period, and comma
-        value = value.replace(/[^a-zA-Z0-9\s.,]/g, '');
-        
-        // Limit numbers to maximum 3 digits (allowing 1-3 digits for flexibility)
-        // This processes the string to limit consecutive digits to 3
-        let result = '';
-        let digitCount = 0;
-        
-        for (let i = 0; i < value.length; i++) {
-            const char = value[i];
-            if (/\d/.test(char)) {
-                if (digitCount < 3) {
-                    result += char;
-                    digitCount++;
-                }
-                // Skip if we already have 3 consecutive digits
-            } else {
-                result += char;
-                digitCount = 0; // Reset counter when non-digit is encountered
-            }
-        }
-        
-        e.target.value = result;
-    });
-
-    // SRP - only numbers and period (decimal point) after hundreds
-    document.getElementById('srpMerchSales').addEventListener('input', function(e) {
-        let value = e.target.value;
-        
-        // Remove all characters except numbers and period
-        value = value.replace(/[^0-9.]/g, '');
-        
-        // Ensure only one decimal point
-        const parts = value.split('.');
-        if (parts.length > 2) {
-            value = parts[0] + '.' + parts.slice(1).join('');
-        }
-        
-        // Limit decimal places to 2 (after the period)
-        if (parts.length === 2 && parts[1].length > 2) {
-            value = parts[0] + '.' + parts[1].substring(0, 2);
-        }
-        
-        e.target.value = value;
-    });
-
-    // Validate all required fields before form submission
-    document.addEventListener('DOMContentLoaded', function() {
-        const forms = document.querySelectorAll('form');
-        
-        forms.forEach(function(form) {
-            form.addEventListener('submit', function(e) {
-                if (!form.checkValidity()) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                }
-                form.classList.add('was-validated');
-            });
-        });
     });
 </script>
