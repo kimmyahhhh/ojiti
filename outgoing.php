@@ -95,7 +95,7 @@
                                     <div class="mb-2 row">
                                         <label class="col-sm-3 col-form-label" for="transactionDate">Transaction Date:</label>
                                         <div class="col-sm-8">
-                                            <input type="date" id="transactionDate" name="transactionDate" class="form-control">
+                                            <input type="text" id="transactionDate" name="transactionDate" class="form-control">
                                         </div>
                                     </div>
 
@@ -111,6 +111,7 @@
                                         <div class="col-sm-8">
                                             <select class="form-select" name="isynBranch" id="isynBranch" onchange="LoadBranch(this.value)">
                                                 <option value="" selected>Select</option>
+                                                <option value="HEAD OFFICE">HEAD OFFICE</option>
                                             </select>
                                         </div>
                                     </div>
@@ -129,7 +130,8 @@
                                         <div class="col-sm-8">
                                             <select class="form-select" name="type" id="type" onchange="LoadCategory(this.value);">
                                                 <option value="" selected>Select</option>
-                                                <!-- Populate options dynamically -->
+                                                <option value="With VAT">With VAT</option>
+                                                <option value="Non-VAT">Non-VAT</option>
                                             </select>
                                         </div>
                                     </div>
@@ -138,8 +140,11 @@
                                         <label class="col-sm-3 col-form-label" for="category">Category:</label>
                                         <div class="col-sm-8">
                                             <select class="form-select" aria-label="Category" name="category" id="category" onchange="LoadSerialProduct(this.value);">
-                                                <!-- <option value="" selected>Select</option> -->
-                                                <!-- Populate options dynamically -->
+                                                <option value="" selected>Select</option>
+                                                <option value="Battery">Battery</option>
+                                                <option value="Cable">Cable</option>
+                                                <option value="Cartridge">Cartridge</option>
+                                                <option value="Connector">Connector</option>
                                             </select>
                                         </div>
                                     </div>
@@ -239,6 +244,12 @@
                                                     <select id="customerType" name="customerType" class="form-select" required onchange="toggleCustomerNameInput(this.value)">
                                                         <option value="" selected> SELECT</option>
                                                         <option value="OTHER CLIENT"> OTHER CLIENT</option>
+                                                        <option value="BUSINESS UNIT"> BUSINESS UNIT</option>
+                                                        <option value="EXTERNAL CLIENT"> EXTERNAL CLIENT</option>
+                                                        <option value="MFI BRANCHES"> MFI BRANCHES</option>
+                                                        <option value="MFI HO"> MFI HO</option>
+                                                        <option value="OTHERS"> OTHERS</option>
+                                                        <option value="STAFF"> STAFF</option>
                                                     </select>
                                                 </div>
                                             </div>
@@ -588,52 +599,14 @@
 ?>
 
 <script>
-    // Set max date to today for transaction date input
-    document.addEventListener('DOMContentLoaded', function() {
-        const transactionDateInput = document.getElementById('transactionDate');
-        
-        if (transactionDateInput) {
-            // Get today's date in YYYY-MM-DD format
-            const today = new Date();
-            const year = today.getFullYear();
-            const month = String(today.getMonth() + 1).padStart(2, '0');
-            const day = String(today.getDate()).padStart(2, '0');
-            const maxDate = `${year}-${month}-${day}`;
-            
-            // Set the max attribute to today's date
-            transactionDateInput.setAttribute('max', maxDate);
-            
-            // Add validation on change
-            transactionDateInput.addEventListener('change', function() {
-                const selectedDate = new Date(this.value);
-                const currentDate = new Date();
-                
-                // Reset time to compare only dates
-                currentDate.setHours(0, 0, 0, 0);
-                selectedDate.setHours(0, 0, 0, 0);
-                
-                if (selectedDate > currentDate) {
-                    alert('Transaction date cannot be in the future. Please select today or a past date.');
-                    this.value = maxDate;
-                }
-            });
-            
-            // Set default value to today if empty
-            if (!transactionDateInput.value) {
-                transactionDateInput.value = maxDate;
-            }
-        }
-    });
-
-    // TIN formatting function
     document.getElementById('tinNoinput').addEventListener('input', function (e) {
-        let inputValue = e.target.value.replace(/\D/g, '').substring(0, 13);
+        let inputValue = e.target.value.replace(/\D/g, '').substring(0, 13); // Get only digits and limit to 15 characters
         let formattedValue = '';
         
         for (let i = 0; i < inputValue.length; i++) {
-            if (i > 0 && (i % 3 === 0 && i < 9)) {
+            if (i > 0 && (i % 3 === 0 && i < 9)) { // Add dashes after every 3 digits until the 9th digit
                 formattedValue += '-';
-            } else if (i === 9) {
+            } else if (i === 9) { // Add a dash after the 9th digit for the last group of 4 digits
                 formattedValue += '-';
             }
             formattedValue += inputValue[i];
