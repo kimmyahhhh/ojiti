@@ -1,0 +1,804 @@
+<?php
+    session_start();
+    if (isset($_SESSION['EMPNO']) && isset($_SESSION['USERNAME']) && isset($_SESSION["AUTHENTICATED"]) && $_SESSION["AUTHENTICATED"] === true) {
+?>
+
+<!doctype html>
+<html lang="en" dir="ltr">
+    <?php
+        include('../../includes/pages.header.php');
+    ?>
+      <link rel="stylesheet" href="../../assets/datetimepicker/jquery.datetimepicker.css">
+      <link rel="stylesheet" href="../../assets/select2/css/select2.min.css">
+
+    <body class="  ">
+        <!-- loader Start -->
+        <div id="loading">
+        <div class="loader simple-loader">
+            <div class="loader-body"></div>
+        </div>
+        </div>
+        <!-- loader END -->
+
+        <?php
+            include('../../includes/pages.sidebar.php');
+            include('../../includes/pages.navbar.php');
+            include('../../database/connection.php');
+            $db = new Database();
+            $connection = $db->conn;
+        ?>
+
+        <?php
+            // Fetch categories with VAT
+            $sql = "SELECT DISTINCT Category FROM tbl_invlist WHERE Type = 'With VAT' ORDER BY Category ASC";
+            $result = mysqli_query($connection, $sql);
+            $categoriesWithVAT = [];
+            if (mysqli_num_rows($result) > 0) {
+                while ($row = mysqli_fetch_assoc($result)) {
+                    $categoriesWithVAT[] = $row['Category'];
+                }
+            }
+
+            // Fetch categories without VAT
+            $sql = "SELECT DISTINCT Category FROM tbl_invlist WHERE Type = 'Non-VAT' ORDER BY Category ASC";
+            $result = mysqli_query($connection, $sql);
+            $categoriesNonVAT = [];
+            if (mysqli_num_rows($result) > 0) {
+                while ($row = mysqli_fetch_assoc($result)) {
+                    $categoriesNonVAT[] = $row['Category'];
+                }
+            }
+
+            //Fetch type based on Branch
+            $sql = "SELECT DISTINCT Type FROM tbl_invlist WHERE Branch = 'HEAD OFFICE'";
+            $result = mysqli_query($connection, $sql);
+            $typeHeadOffice = [];
+            if (mysqli_num_rows($result) > 0) {
+                while ($row = mysqli_fetch_assoc($result)) {
+                    $typeHeadOffice[] = $row['Type'];
+                }
+            }
+
+            $sql = "SELECT DISTINCT Type FROM tbl_invlist WHERE Branch = 'ISYN-SANTIAGO'";
+            $result = mysqli_query($connection, $sql);
+            $typeIsynSantiago = [];
+            if (mysqli_num_rows($result) > 0) {
+                while ($row = mysqli_fetch_assoc($result)) {
+                    $typeIsynSantiago[] = $row['Type'];
+                }
+            }
+        ?>
+
+        <style>
+            td {
+                font-weight: 400;
+            }
+
+            form {
+
+                padding: 20px;
+                background-color: white;
+                border-radius: 10px;
+            }
+
+            label,
+            thead {
+                color: #090909;
+
+            }
+
+            main {
+                background-color: #EAEAF6;
+                height: 100% ;
+            }
+
+
+            th {
+                font-weight: bold;
+                color: #090909;
+                position: sticky;
+                top: 0;
+            }
+        </style>
+
+            <div class="container mt-4">
+                <div class="customer-profile shadow p-3 rounded-2 mb-3" style="background-color: white;">
+                    <p style="color: blue; font-weight: bold;" class="fs-5 my-2">Consignment</p>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-md-6">
+                        <!-- Particulars Section -->
+                        <div class="col mt-3">
+                            <form class="p-3 needs-validation shadow" id="branchForm" novalidate>
+                                <div class="col-md-12 mb-3">
+                                    <label for="branch" class="fw-medium fs-5">Branch</label>
+                                    <hr style="height: 1px">
+                                    <select class="form-select" id="branch" aria-label="Default select example">
+                                        <option value="" selected disabled>Select</option>
+                                        <?php
+                                        $query = "SELECT DISTINCT ItemName FROM tbl_maintenance WHERE ItemType='BRANCHES'";
+                                        $query_run = mysqli_query($connection, $query);
+
+                                        if (mysqli_num_rows($query_run) > 0) {
+                                            while ($row = mysqli_fetch_assoc($query_run)) {
+                                        ?>
+                                                <option value="<?php echo $row['ItemName'] ?>"><?php echo $row['ItemName'] ?></option>
+                                        <?php
+                                            }
+                                        }
+                                        ?>
+                                    </select>
+                                </div>
+                            </form>
+                            <form class="mt-3 shadow" id="particulars">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <p class="fw-medium fs-5" style="color: #090909;">Particulars</p>
+                                </div>
+                                <hr style="height: 1px">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <label for="isynBranch" class="form-label">Isyn Branch</label>
+                                        <!-- <input type="text" class="form-control" id="isynBranch" required>-->
+                                        <select class="form-select" aria-label="Default select example" required name="isynBranch" id="isynBranch">
+                                            <option value="" selected disabled>Select</option>
+                                            <?php
+                                            $query = "SELECT DISTINCT Branch FROM tbl_invlist ORDER BY Branch";
+                                            $query_run = mysqli_query($connection, $query);
+
+                                            if (mysqli_num_rows($query_run) > 0) {
+                                                while ($row = mysqli_fetch_assoc($query_run)) {
+                                            ?>
+                                                    <option value="<?php echo $row['Branch'] ?>"><?php echo $row['Branch'] ?></option>
+                                            <?php
+                                                }
+                                            }
+                                            ?>
+                                        </select>
+
+                                        <label for="type" class="form-label mt-2">Type</label>
+                                        <select class="form-select" id="type" aria-label="Default select example">
+                                            <option value="" selected disabled>Select</option>
+                                        </select>
+
+                                        <label for="category" class="form-label mt-2">Category</label>
+                                        <select class="form-select mb-2" id="category" aria-label="Default select example">
+                                            <option value="" selected disabled>Select</option>
+                                        </select>
+                                        <label for="quantityInput" class="form-label mt-2">Quantity</label>
+                                        <input type="number" class="form-control" id="quantityInput" placeholder="" required></select>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <div class="col-12 mb-1">
+                                            <label for="selectBy" class="form-label">Select by:</label>
+                                        </div>
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input" type="radio" name="inlineRadioOptions" id="inlineRadio1" value="product">
+                                            <label class="form-check-label" for="inlineRadio1">Product Name</label>
+                                        </div>
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input" type="radio" name="inlineRadioOptions" id="inlineRadio2" value="serial">
+                                            <label class="form-check-label" for="inlineRadio2">Serial No.</label>
+                                        </div>
+                                        <div>
+                                            <label id="selectLabel" class="form-label mt-3">Select:</label>
+                                            <select id="itemSelect" name="select[]" class="form-select" aria-label="Default select example" required>
+                                                <option value="" selected disabled>Select</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label id="selectLabel" class="form-label mt-2">SI No</label>
+                                            <select id="SInoSelect" name="SIno[]" class="form-control">
+
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <!-- Product Summary Section -->
+                        <div class="col-md-12 mt-3 mb-3">
+                            <form class="p-3 rounded-2 shadow" style="background-color: white;" id="summary">
+                                <p class="fw-medium fs-5" style="color: #090909;">Product Summary</p>
+                                <hr style="height: 1px">
+                                <div class="row">
+                                    <div class="col-md-12">
+                                        <label for="supplierSI" class="form-label mt-2">Supplier SI</label>
+                                        <input type="text" id="supplier_si" name="supplier_si[]" class="form-control" readonly>
+                                    </div>
+                                    <div class="col-md-12">
+                                        <label for="serialNo3" class="form-label mt-2">Serial No.:</label>
+                                        <input type="text" id="SIno" name="SIno]" class="form-control" readonly>
+                                    </div>
+                                    <div class="col-md-12">
+                                        <label for="product" class="form-label mt-2">Product:</label>
+                                        <input type="text" id="product" name="product[]" class="form-control" readonly>
+                                    </div>
+                                    <div class="col-md-12">
+                                        <label for="supplier" class="form-label mt-2">Supplier:</label>
+                                        <input type="text" id="supplier" name="supplier[]" class="form-control" readonly>
+                                    </div>
+                                    <div class="col-md-12">
+                                        <label for="srp" class="form-label mt-2">SRP:</label>
+                                        <input type="text" id="srp" name="srp[]" class="form-control" readonly>
+                                    </div>
+                                    <div class="col-md-12">
+                                        <label for="quantity" class="form-label mt-2">Quantity:</label>
+                                        <input type="text" id="quantity" name="quantity[]" class="form-control" readonly>
+                                    </div>
+                                    <div class="col-md-12">
+                                        <label for="dealerPrice" class="form-label mt-2">Dealer's Price:</label>
+                                        <input type="text" id="dealers_price" name="dealers_price[]" class="form-control" readonly>
+                                    </div>
+                                    <div class="col-md-12">
+                                        <label for="totalPrice" class="form-label mt-2">Total Price:</label>
+                                        <input type="text" id="total_price" name="total_price[]" class="form-control" readonly>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="container mt-4 table-responsive p-3 rounded-2 shadow" style="background-color: white;">
+                    <div class="align-items-center justify-content-between mb-4">
+                        <button class="btn btn-danger px-3 py-2 mx-1 float-end" type="button" id="cancel-btn" onclick="cancelProduct()" disabled>
+                            <i class="fa-regular fa-circle-xmark"></i> Cancel Product
+                        </button>
+                        <button class="btn btn-success px-3 py-2 mx-1 float-end" type="button" id="submit-btn" onclick="saveDataFromTable()" disabled>
+                        <i class="fa-solid fa-check-circle"></i> Submit
+                        </button>
+                        <button class="btn btn-primary px-3 py-2 mx-1 float-end" type="button" id="add-btn" onclick="addToTable()">
+                            <i class="fa-solid fa-plus"></i> Add
+                        </button>
+                        <p class="fw-medium fs-5" style="color: #090909;">Pricing</p>
+                    </div>
+                    <hr style="height: 1px">
+                    <div class="overflow-auto mb-3" style="max-height: 300px;">
+                        <table class="table table-hover table-borderless table-responsive" id="myTable">
+                            <thead>
+                                <tr>
+                                    <th>Quantity</th>
+                                    <th>Product</th>
+                                    <th>Dealer Price</th>
+                                    <th>Total Price</th>
+                                    <th>SRP</th>
+                                    <th>Total SRP</th>
+                                    <th>Mark Up</th>
+                                    <th>Vat Sale</th>
+                                    <th>VAT</th>
+                                    <th>Amount Due</th>
+                                    <th>Stock</th>
+                                    <th>Branch</th>
+                                    <th>Type</th>
+                                    <th>Category</th>
+                                    <th>Supplier SI</th>
+                                    <th>SI No.</th>
+                                    <th>Supplier</th>
+                                    <th>Date Added</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tableBody">
+
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        <?php
+            include('../../includes/pages.footer.php');
+        ?>
+
+        <script src="../../assets/select2/js/select2.full.min.js"></script>
+        <!-- <script src="../../js/inventorymanagement/outgoinginventory.js?<?= time() ?>"></script> -->
+
+    </body>
+</html>
+<?php
+  } else {
+    echo '<script> window.location.href = "../../login.php"; </script>';
+  }
+?>
+
+
+<script>
+    // Function to filter categories based on selected type
+    function filterType() {
+        var branch = document.getElementById("isynBranch").value;
+        console.log(branch);
+
+        var typeHeadOffice = <?php echo json_encode($typeHeadOffice); ?>;
+        var typeIsynSantiago = <?php echo json_encode($typeIsynSantiago); ?>;
+        var typeSelect = document.getElementById("type");
+
+        typeSelect.innerHTML = ' <option value="" selected disabled>Select</option>';
+
+        if (branch === "HEAD OFFICE") {
+            typeHeadOffice.forEach(function(type) {
+                var option = document.createElement("option");
+                option.text = type;
+                option.value = type;
+                typeSelect.appendChild(option);
+            });
+        } else if (branch === "ISYN-SANTIAGO") {
+            typeIsynSantiago.forEach(function(type) {
+                var option = document.createElement("option");
+                option.text = type;
+                option.value = type;
+                typeSelect.appendChild(option);
+            });
+        }
+    }
+
+    function filterCategories() {
+        var type = document.getElementById("type").value;
+        console.log(type);
+
+        var categoriesWithVAT = <?php echo json_encode($categoriesWithVAT); ?>;
+        var categoriesNonVAT = <?php echo json_encode($categoriesNonVAT); ?>;
+        var categoriesSelect = document.getElementById("category");
+
+        // Clear existing options
+        categoriesSelect.innerHTML = '<option value="" selected disabled>Select</option>';
+
+        // Populate options based on selected type
+        if (type === "WITH VAT") {
+            categoriesWithVAT.forEach(function(category) {
+                var option = document.createElement("option");
+                option.text = category;
+                option.value = category;
+                categoriesSelect.appendChild(option);
+            });
+        } else if (type === "NON-VAT") {
+            categoriesNonVAT.forEach(function(category) {
+                var option = document.createElement("option");
+                option.text = category;
+                option.value = category;
+                categoriesSelect.appendChild(option);
+            });
+        }
+    }
+
+
+    // Attach event listener when the document is loaded
+    document.addEventListener("DOMContentLoaded", function() {
+        var branchSelect = document.getElementById("isynBranch");
+        branchSelect.addEventListener("change", filterType);
+
+        var typeSelect = document.getElementById("type");
+        typeSelect.addEventListener("change", filterCategories);
+
+    });
+</script>
+
+<script>
+    //for fetching Product Name or Serial No and SI No
+    $(document).ready(function() {
+        $('input[name="inlineRadioOptions"]').on('change', function() {
+            var type = $(this).val();
+            var category = $('#category').val();
+            var selectElement = $('#itemSelect');
+            if (type && category) {
+                $.ajax({
+                    type: 'POST',
+                    url: './ajax-inventory/fetch_items.php',
+                    data: {
+                        type: type,
+                        category: category
+                    },
+                    success: function(response) {
+                        var data = JSON.parse(response);
+                        selectElement.empty();
+                        selectElement.append('<option selected disabled>Select</option>');
+                        $.each(data.options, function(index, option) {
+                            selectElement.append('<option value="' + option + '">' + option + '</option>');
+                        });
+                    },
+                    error: function() {
+                        console.error('Error fetching items');
+                    }
+                });
+            }
+        });
+
+        $('#itemSelect').change(function() {
+            var selectedOption = $(this).val();
+            var category = $('#category').val();
+            var type = $('input[name="inlineRadioOptions"]:checked').val();
+            if (selectedOption && category && type) {
+                $.ajax({
+                    type: 'POST',
+                    url: './ajax-inventory/fetch_items.php',
+                    data: {
+                        selectedOption: selectedOption,
+                        category: category,
+                        type: type
+                    },
+                    success: function(response) {
+                        var data = JSON.parse(response);
+                        var siSelectElement = $('#SInoSelect');
+                        siSelectElement.empty();
+                        siSelectElement.append('<option selected disabled>Select</option>');
+                        $.each(data.options, function(index, option) {
+                            siSelectElement.append('<option value="' + option + '">' + option + '</option>');
+                        });
+                    },
+                    error: function() {
+                        console.error('Error fetching SI numbers');
+                    }
+                });
+            }
+        });
+    });
+</script>
+
+<script>
+    $(document).ready(function() {
+
+        $('#SInoSelect').change(function() {
+            var selectedSIno = $(this).val();
+            var type = $('input[name="inlineRadioOptions"]:checked').val();
+            var selectedOption = $('#itemSelect').val();
+
+            console.log('Selected SIno:', selectedSIno);
+            $.ajax({
+                type: 'POST',
+                url: './ajax-inventory/consignment-product-summary.php',
+                data: {
+                    SIno: selectedSIno,
+                    selectedOption: selectedOption,
+                    type: type
+                },
+                dataType: 'json',
+                success: function(productSummary) {
+                    console.log(productSummary);
+                    if (productSummary.error) {
+                        alert(productSummary.error);
+                    } else {
+                        updateProductSummary(productSummary);
+                    }
+                },
+                error: function() {
+                    alert('Error fetching product summary');
+                }
+            });
+        });
+
+        function updateProductSummary(productSummary) {
+            $('#supplier_si').val(productSummary.supplier_si);
+            // $('#SIno').val(productSummary.Serialno);
+            $('#product').val(productSummary.product);
+            $('#supplier').val(productSummary.supplier);
+            $('#srp').val(productSummary.srp);
+            $('#quantity').val(productSummary.quantity);
+            $('#dealers_price').val(productSummary.dealers_price);
+
+            var qty = parseFloat(productSummary.quantity) || 0;
+            var price = parseFloat(productSummary.dealers_price) || 0;
+            var total = qty * price;
+            $('#total_price').val(total.toFixed(2));
+        }
+    });
+</script>
+
+<!--
+<script>
+    $(document).ready(function() {
+        // Function to enable/disable edit and delete buttons
+        function updateButtons() {
+            const selectedRow = $('#myTable tbody tr.table-active');
+            if (selectedRow.length > 0) {
+                $('#edit-btn, #delete-btn').prop('disabled', false);
+            } else {
+                $('#edit-btn, #delete-btn').prop('disabled', true);
+            }
+        }
+
+        // Add new entry
+        $('#addEntryButton').on('click', function() {
+            const quantity = $('#addQuantity').val();
+            const product = $('#addProduct').val();
+            const dealerPrice = $('#addDealerPrice').val();
+            const unitPrice = $('#addUnitPrice').val();
+            const totalPrice = $('#addTotalPrice').val();
+            const srp = $('#addSRP').val();
+            const totalSRP = $('#addTotalSRP').val();
+            const makeUp = $('#addMakeUp').val();
+            const totalMakeUp = $('#addTotalMakeUp').val();
+            const vatSale = $('#addVatSale').val();
+            const vat = $('#addVat').val();
+            const amountDue = $('#addAmountDue').val();
+
+            const newRow = `
+                <tr>
+                    <td>${quantity}</td>
+                    <td>${product}</td>
+                    <td>${dealerPrice}</td>
+                    <td>${unitPrice}</td>
+                    <td>${totalPrice}</td>
+                    <td>${srp}</td>
+                    <td>${totalSRP}</td>
+                    <td>${makeUp}</td>
+                    <td>${totalMakeUp}</td>
+                    <td>${vatSale}</td>
+                    <td>${vat}</td>
+                    <td>${amountDue}</td>
+                </tr>
+            `;
+
+            $('#tableBody').append(newRow); // Append new row to table body
+            $('#addEntryModal').modal('hide'); // Hide modal after adding row
+            $('#addEntryForm')[0].reset(); // Reset form fields
+        });
+
+        // Enable edit and delete buttons when a row is clicked
+        $('#myTable').on('click', 'tbody tr', function() {
+            // Remove previous active class from all rows
+            $('#myTable tbody tr').removeClass('table-active');
+            // Add active class to the clicked row
+            $(this).addClass('table-active');
+            // Update edit and delete buttons state
+            updateButtons();
+        });
+
+        // Edit button functionality
+        $('#edit-btn').on('click', function() {
+            const selectedRow = $('#myTable tbody tr.table-active');
+            // Example: Populate edit modal fields with selected row data
+            $('#editQuantity').val(selectedRow.find('td:eq(0)').text());
+            $('#editProduct').val(selectedRow.find('td:eq(1)').text());
+            $('#editDealerPrice').val(selectedRow.find('td:eq(2)').text());
+            $('#editUnitPrice').val(selectedRow.find('td:eq(3)').text());
+            $('#editTotalPrice').val(selectedRow.find('td:eq(4)').text());
+            $('#editSRP').val(selectedRow.find('td:eq(5)').text());
+            $('#editTotalSRP').val(selectedRow.find('td:eq(6)').text());
+            $('#editMakeUp').val(selectedRow.find('td:eq(7)').text());
+            $('#editTotalMakeUp').val(selectedRow.find('td:eq(8)').text());
+            $('#editVatSale').val(selectedRow.find('td:eq(9)').text());
+            $('#editVat').val(selectedRow.find('td:eq(10)').text());
+            $('#editAmountDue').val(selectedRow.find('td:eq(11)').text());
+            // Show the edit modal
+            $('#editEntryModal').modal('show');
+        });
+
+        // Delete button functionality
+        $('#delete-btn').on('click', function() {
+            // Example: Show confirmation modal or directly delete row
+            $('#deleteEntryModal').modal('show');
+        });
+
+        // Functionality to handle deletion after confirmation
+        $('#deleteButton').on('click', function() {
+            // Example: Remove the selected row from the table
+            $('#myTable tbody tr.table-active').remove();
+            // Hide the confirmation modal
+            $('#deleteEntryModal').modal('hide');
+            // Update edit and delete buttons state after deletion
+            updateButtons();
+        });
+
+        // Functionality to save changes in edit modal
+        $('#saveChangesButton').on('click', function() {
+            const editedRow = $('#myTable tbody tr.table-active');
+            // Example: Update the table row with edited data from modal fields
+            editedRow.find('td:eq(0)').text($('#editQuantity').val());
+            editedRow.find('td:eq(1)').text($('#editProduct').val());
+            editedRow.find('td:eq(2)').text($('#editDealerPrice').val());
+            editedRow.find('td:eq(3)').text($('#editUnitPrice').val());
+            editedRow.find('td:eq(4)').text($('#editTotalPrice').val());
+            editedRow.find('td:eq(5)').text($('#editSRP').val());
+            editedRow.find('td:eq(6)').text($('#editTotalSRP').val());
+            editedRow.find('td:eq(7)').text($('#editMakeUp').val());
+            editedRow.find('td:eq(8)').text($('#editTotalMakeUp').val());
+            editedRow.find('td:eq(9)').text($('#editVatSale').val());
+            editedRow.find('td:eq(10)').text($('#editVat').val());
+            editedRow.find('td:eq(11)').text($('#editAmountDue').val());
+            // Hide the edit modal
+            $('#editEntryModal').modal('hide');
+        });
+
+        // Initial state setup
+        updateButtons();
+    });
+</script>
+-->
+
+<script>
+    var totalPrice = 0;
+    var totalSRP = 0;
+    var markup = 0;
+    var vatsale = 0;
+    var vat = 0;
+
+    function addToTable() {
+        const lastdealersPrice = document.getElementById("dealers_price");
+        const lastsrp = document.getElementById("srp");
+        const lastquantity = document.getElementById("quantityInput");
+
+        const dealersPrice = parseFloat(lastdealersPrice.value);
+        const srpParse = parseFloat(lastsrp.value);
+        const quantityParse = parseFloat(lastquantity.value);
+
+        if (!isNaN(srpParse) && !isNaN(quantityParse) && !isNaN(dealersPrice)) {
+            totalPrice = quantityParse * dealersPrice;
+            totalSRP = quantityParse * srpParse;
+            markup = totalSRP - totalPrice;
+
+        }
+
+        var stock = document.getElementById("branch").value;
+        var branch = document.getElementById("isynBranch").value;
+        var type = document.getElementById("type").value;
+        var category = document.getElementById("category").value;
+        var supplier_si = document.getElementById("supplier_si").value;
+        var SIno = document.getElementById("SIno").value;
+        var product = document.getElementById("product").value;
+        var supplier = document.getElementById("supplier").value;
+        var srp = document.getElementById("srp").value;
+        var quantity = document.getElementById("quantityInput").value;
+        var dealers_price = document.getElementById("dealers_price").value;
+        var supplier = document.getElementById("supplier").value;
+
+        if (type === 'With VAT' || type === 'WITH VAT') {
+            vatsale = totalPrice / 1.12;
+            vat = (vatsale * 0.12) * quantityParse;
+
+            vatsale = vatsale.toFixed(2);
+            vat = vat.toFixed(2);
+        }
+
+        var quantityDisplay = document.getElementById("quantity").value;
+        if (quantity > quantityDisplay) {
+            const Toast = Swal.mixin({
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true,
+                didOpen: (toast) => {
+                    toast.onmouseenter = Swal.stopTimer;
+                    toast.onmouseleave = Swal.resumeTimer;
+                }
+            });
+            Toast.fire({
+                icon: 'error',
+                title: 'Invalid quantity input'
+            });
+
+            return false;
+        }
+
+        var amountDue = totalPrice;
+        let datePrepared = new Date().toLocaleDateString();
+
+        var newRow = document.createElement("tr");
+
+        // Populate the new row with input values
+        newRow.innerHTML = `
+                        <td>${quantity}</td>
+                        <td>${product}</td>
+                        <td>${dealers_price}</td>
+                        <td>${totalPrice}</td>
+                        <td>${srp}</td>
+                        <td>${totalSRP}</td>
+                        <td>${markup}</td>
+                        <td>${vatsale}</td>
+                        <td>${vat}</td>
+                        <td>${amountDue}</td>
+                        <td>${stock}</td>
+                        <td>${branch}</td>
+                        <td>${type}</td>
+                        <td>${category}</td>
+                        <td>${supplier_si}</td>
+                        <td>${SIno}</td>
+                        <td>${supplier}</td>
+                        <td>${datePrepared}</td>
+                    `;
+
+        // Append the new row to the table body
+        var tableBody = document.getElementById("myTable").querySelector("tbody");
+        tableBody.appendChild(newRow);
+
+        document.getElementById("particulars").reset();
+        document.getElementById("summary").reset();
+
+        document.getElementById("submit-btn").disabled = false;
+        document.getElementById("cancel-btn").disabled = false;
+    }
+</script>
+
+
+<script>
+    function saveDataFromTable() {
+        var tableBody = document.getElementById("myTable").querySelector("tbody");
+        var data = [];
+
+        tableBody.querySelectorAll("tr").forEach(function(row) {
+            var cells = row.querySelectorAll("td");
+            var rowData = {
+                quantity: cells[0] ? cells[0].innerText || '' : '',
+                product: cells[1] ? cells[1].innerText || '' : '',
+                dealersPrice: cells[2] ? cells[2].innerText || '' : '',
+                totalPrice: cells[3] ? cells[3].innerText || '' : '',
+                srp: cells[4] ? cells[4].innerText || '' : '',
+                totalSRP: cells[5] ? cells[5].innerText || '' : '',
+                markup: cells[6] ? cells[6].innerText || '' : '',
+                vatsale: cells[7] ? cells[7].innerText || '' : '',
+                vat: cells[8] ? cells[8].innerText || '' : '',
+                amountDue: cells[9] ? cells[9].innerText || '' : '',
+                stock: cells[10] ? cells[10].innerText || '' : '',
+                branch: cells[11] ? cells[11].innerText || '' : '',
+                type: cells[12] ? cells[12].innerText || '' : '',
+                category: cells[13] ? cells[13].innerText || '' : '',
+                supplierSI: cells[14] ? cells[14].innerText || '' : '',
+                SIno: cells[15] ? cells[15].innerText || '' : '',
+                supplier: cells[16] ? cells[16].innerText || '' : '',
+                dateAdded: cells[17] ? cells[17].innerText || '' : '',
+            };
+            data.push(rowData);
+            console.log('product:', rowData);
+        });
+
+        var xhr = new XMLHttpRequest();
+        xhr.open("POST", "./ajax-inventory/save-consignment.php", true);
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === XMLHttpRequest.DONE) {
+                if (xhr.status === 200) {
+                    console.log(xhr.responseText);
+
+                    const Toast = Swal.mixin({
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 3000,
+                        timerProgressBar: true,
+                        didOpen: (toast) => {
+                            toast.onmouseenter = Swal.stopTimer;
+                            toast.onmouseleave = Swal.resumeTimer;
+                        }
+                    });
+                    Toast.fire({
+                        icon: 'success',
+                        title: 'Added successfully'
+                    });
+                } else {
+                    console.error('Error:', xhr.status, xhr.statusText);
+                    const Toast = Swal.mixin({
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 3000,
+                        timerProgressBar: true,
+                        didOpen: (toast) => {
+                            toast.onmouseenter = Swal.stopTimer;
+                            toast.onmouseleave = Swal.resumeTimer;
+                        }
+                    });
+                    Toast.fire({
+                        icon: 'error',
+                        title: 'Error inserting data'
+                    });
+                }
+            }
+        };
+
+        tableBody.innerHTML = "";
+        document.getElementById("branchForm").reset();
+        document.getElementById("particulars").reset();
+        document.getElementById("summary").reset();
+
+
+        var jsonData = JSON.stringify(data);
+        xhr.send(jsonData);
+    }
+
+    function cancelProduct() {
+        document.getElementById("branchForm").reset();
+        document.getElementById("particulars").reset();
+        document.getElementById("summary").reset();
+        document.getElementById('tableBody').innerHTML = '';
+    }
+</script>
