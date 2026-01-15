@@ -21,9 +21,11 @@ $('.searchName').typeahead({
 });
 
 LoadShareHolderNames();
+var shSearchDebounceTimer;
 $("#shSearch").on("input", function(){
     var q = $(this).val();
-    LoadShareHolderList(q);
+    clearTimeout(shSearchDebounceTimer);
+    shSearchDebounceTimer = setTimeout(function(){ LoadShareHolderList(q); }, 300);
 });
 
 function LoadShareHolderNames(){
@@ -71,15 +73,19 @@ function LoadShareHolderList(name){
                 `);
             });
 
-            shareholderTbl = $('#shareholderTbl').DataTable({
-                pageLength: 5,
-                searching:true,
-                ordering:false,
-                lengthChange:false,
-                info:false,
-                paging:true,
-                responsive:true,
-            });
+            if ($.fn.DataTable.isDataTable('#shareholderTbl')) {
+                shareholderTbl = $('#shareholderTbl').DataTable({ retrieve: true });
+            } else {
+                shareholderTbl = $('#shareholderTbl').DataTable({
+                    pageLength: 5,
+                    searching:true,
+                    ordering:false,
+                    lengthChange:false,
+                    info:false,
+                    paging:true,
+                    responsive:true,
+                });
+            }
             updateSummaryFromFirstRow();
         }, 
     })
