@@ -35,10 +35,10 @@ function SetTransactionDate(){
         mask: '99/99/9999',
     };
 
-    $('#transmittalDateFrom').datetimepicker(options);
-    $('#transmittalDateTo').datetimepicker(options);
     $('#dateCarrier').datetimepicker(options);
     $('#dateReceivedBy').datetimepicker(options);
+    $('#transmittalDateFrom').datetimepicker(options);
+    $('#transmittalDateTo').datetimepicker(options);
 
     // Swal.fire({
     //     title: 'Please Select Transaction Date.',
@@ -618,56 +618,45 @@ function SubmitBtn(){
 
 function SearchTransmittal(){    
     $("#listList").empty();
-
-    $("#productList").empty();
-
     $("#rePrint").prop("disabled", true);
-
     $("#SearchTransmittalMDL").modal("show");
 }
 
 function TransmittalSearch(){
-    var dateFrom = $("#transmittalDateFrom").val();
-    var dateTo = $("#transmittalDateTo").val();
+    var nameFrom = $("#searchNameFrom").val();
+    console.log("Search function called with:", nameFrom);
 
-    if (dateFrom == "" || dateTo == "") {
+    if (nameFrom == "") {
+        console.log("Empty search term - showing warning");
         Swal.fire({
             icon: 'warning',
-            title: 'Please select date from and date to.',
+            title: 'Please enter sender name.',
         })
         return;
     }
 
-    if (parseDate(dateTo) < parseDate(dateFrom)) {
-        Swal.fire({
-            icon: 'warning',
-            title: 'Date To is lower than Date From.',
-        })
-        return;
-    }
+    console.log("Making AJAX call to:", "../../routes/inventorymanagement/transmittalreceipt.route.php");
+    console.log("Sending data:", {action:"TransmittalSearch",nameFrom:nameFrom});
 
     $.ajax({
         url:"../../routes/inventorymanagement/transmittalreceipt.route.php",
         type:"POST",
-        data:{action:"TransmittalSearch",dateFrom:dateFrom,dateTo:dateTo},
+        data:{action:"TransmittalSearch",nameFrom:nameFrom},
         dataType:"JSON",
         beforeSend:function(){
+            console.log("Before send - clearing table");
             if ( $.fn.DataTable.isDataTable( '#listTbl' ) ) {
                 $('#listTbl').DataTable().clear();
                 $('#listTbl').DataTable().destroy(); 
             }
 
-            if ( $.fn.DataTable.isDataTable( '#productTbl' ) ) {
-                $('#productTbl').DataTable().clear();
-                $('#productTbl').DataTable().destroy(); 
-            }
-            $("#productList").empty();
-
-            $("#loadToList").prop("disabled", true);
+            $("#rePrint").prop("disabled", true);
         },
         success:function(response){
+            console.log("AJAX success - response:", response);
             $("#listList").empty();
             $.each(response.TRANSACTIONLIST,function(key,value){
+                console.log("Adding row:", value);
                 $("#listList").append(`
                     <tr>
                         <td>${value["TransmittalNO"]}</td>
@@ -690,8 +679,33 @@ function TransmittalSearch(){
                 scrollCollapse: true,
                 responsive:false,
             });
-        }, 
+            console.log("DataTable created");
+        },
+        error: function(xhr, status, error) {
+            console.error("AJAX error:", error);
+            console.error("Status:", status);
+            console.error("Response text:", xhr.responseText);
+            console.error("Ready state:", xhr.readyState);
+            console.error("Status code:", xhr.status);
+            Swal.fire({
+                icon: 'error',
+                title: 'Search Error',
+                text: 'Failed to search. Check console for details.'
+            });
+        }
     })
+}
+
+// Function to clear search
+function ClearSearch(){
+    $("#searchNameFrom").val("");
+    $("#listList").empty();
+    $("#rePrint").prop("disabled", true);
+    
+    if ( $.fn.DataTable.isDataTable( '#listTbl' ) ) {
+        $('#listTbl').DataTable().clear();
+        $('#listTbl').DataTable().destroy(); 
+    }
 }
 
 $('#listTbl tbody').on('click', 'tr',function(e){
@@ -700,16 +714,11 @@ $('#listTbl tbody').on('click', 'tr',function(e){
         if (classList.contains('selected')) {
             classList.remove('selected');
             $("#rePrint").prop("disabled", true);
-            $("#productList").empty();
         } else {
             listTbl.rows('.selected').nodes().each((row) => {
                 row.classList.remove('selected');
             });
             classList.add('selected');
-            var val = $('#listTbl').DataTable().row(this).data();
-            var transNo = val[0];
-            var clientName = val[1];
-            var date = val[2];
             $("#rePrint").prop("disabled", false);
         }
     }
@@ -775,4 +784,66 @@ function formatInput(input) {
     } else {
         input.value = '0.00'; // If empty or invalid, set input to empty
     }
+}
+
+// Function to fetch products for the selected transmittal
+function fetchProducts(transNo) {
+    $.ajax({
+        url: "../../routes/inventorymanagement/transmittalreceipt.route.php",
+        type: "POST",
+        data: {action: "fetchProducts", transNo: transNo},
+        dataType: "JSON",
+        beforeSend: function() {
+            $("#productList").empty();
+        },
+        success: function(response) {
+            $("#productList").empty();
+            if (response.PRODUCTS && response.PRODUCTS.length > 0) {
+                $.each(response.PRODUCTS, function(key, value) {
+                    $("#productList").append(`
+                        <tr>
+                            <td>${value["ProductSerialNo"] || ''}</td>
+                            <td>${value["Quantity"] || ''}</td>
+                            <td>${value["SRP"] || ''}</td>
+                            <td>${value["SINo"] || ''}</td>
+                            <td>${value["SerialNo"] || ''}</td>
+                            <td>${value["ProductName"] || ''}</td>
+                            <td>${value["Supplier"] || ''}</td>
+                            <td>${value["Category"] || ''}</td>
+                            <td>${value["Type"] || ''}</td>
+                            <td>${value["Branch"] || ''}</td>
+                        </tr>
+                    `);
+                });
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error("Error fetching products:", error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Failed to fetch product details'
+            });
+        }
+    });
+}
+
+// Function to reprint the selected transmittal
+function RePrint() {
+    var selectedRow = $('#listTbl tbody tr.selected');
+    
+    if (selectedRow.length === 0) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'No Selection',
+            text: 'Please select a transmittal to reprint'
+        });
+        return;
+    }
+    
+    var val = $('#listTbl').DataTable().row(selectedRow).data();
+    var transNo = val[0];
+    
+    // Open the reprint in a new window
+    window.open("../../routes/inventorymanagement/transmittalreceipt.route.php?type=RePrintTransmittal&transNo=" + transNo, "_blank");
 }
