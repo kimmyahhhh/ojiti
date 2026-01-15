@@ -202,7 +202,7 @@
                 }
 
                 .table tbody tr:hover {
-                    background: #062a4e !important;
+                    background: #f8f9fa !important;
                     transform: scale(1.01);
                 }
 
