@@ -135,12 +135,12 @@
                     transition: all 0.3s ease;
                     border: none;
                     font-size: 0.95rem;
-                    color: #000000 !important;
+                    color: #ffffff !important;
                 }
 
                 .btn-primary {
                     background: #82ccf8ff !important;
-                    color: #000000 !important;
+                    color: #ffffff !important;
                     border: none;
                     padding: 0.625rem 1.25rem;
                     font-weight: 500;
@@ -202,7 +202,7 @@
                 }
 
                 .table tbody tr:hover {
-                    background: #f8f9fa !important;
+                    background: #062a4e !important;
                     transform: scale(1.01);
                 }
 
@@ -312,7 +312,7 @@
                                     <div class="row mb-3">
                                         <label for="colFormLabel" class="col-sm-1  col-form-label">FROM:</label>
                                         <div class="col-sm-9 ms-2">
-                                            <input type="text" class="form-control" name="fromRep" id="fromRep" disabled>
+                                            <input type="text" class="form-control" name="fromRep" id="fromRep" placeholder="ISYNERGIESINC"disabled>
                                         </div>
                                     </div>
                                 </div>
@@ -347,8 +347,9 @@
                                     </div>
                                     <div class="col-md-9">
                                         <select class="form-select" name="isynBranch" id="isynBranch" onchange="LoadBranch(this.value)">
-                                            <option value="" selected disabled>Select</option>
-                                        </select>
+                                                <option value="" selected>Select</option>
+                                                <option value="HEAD OFFICE">HEAD OFFICE</option>
+                                            </select>
                                     </div>
                                 </div>
 
@@ -365,19 +366,23 @@
                                     <label class="col-sm-3 col-form-label" for="type">Type:</label>
                                     <div class="col-md-9">
                                         <select class="form-select" name="type" id="type" onchange="LoadCategory(this.value);">
-                                            <option value="" selected>Select</option>
-                                            <!-- Populate options dynamically -->
-                                        </select>
+                                                <option value="" selected>Select</option>
+                                                <option value="With VAT">With VAT</option>
+                                                <option value="Non-VAT">Non-VAT</option>
+                                            </select>
                                     </div>
                                 </div>
 
                                 <div class="row mt-2">
                                     <label class="col-sm-3 col-form-label" for="category">Category:</label>
                                     <div class="col-sm-9">
-                                        <select class="form-select" aria-label="Category" name="category" id="category" onchange="LoadSerialProduct(this.value);">
-                                            <!-- <option value="" selected>Select</option> -->
-                                            <!-- Populate options dynamically -->
-                                        </select>
+                                         <select class="form-select" aria-label="Category" name="category" id="category" onchange="LoadSerialProduct(this.value);">
+                                                <option value="" selected>Select</option>
+                                                <option value="Battery">Battery</option>
+                                                <option value="Cable">Cable</option>
+                                                <option value="Cartridge">Cartridge</option>
+                                                <option value="Connector">Connector</option>
+                                            </select>
                                     </div>
                                 </div>
 
@@ -615,7 +620,7 @@
                 </div>
             </div>
 
-            <div class="modal fade" id="SearchTransmittalMDL" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="SearchTransmittal" aria-hidden="true">
+            <div class="modal fade" id="SearchTransmittalMDL" data-bs-backdrop="true" data-bs-keyboard="false" tabindex="-1" aria-labelledby="SearchTransmittal" aria-hidden="true">
                 <div class="modal-dialog modal-dialog-centered modal-lg">
                     <div class="modal-content">
                         <div class="modal-header">
@@ -625,16 +630,15 @@
                         <div class="modal-body">
                             <div class="card-container mb-3">
                                 <div class="row align-items-end">
-                                    <div class="col-md-3">
-                                        <label for="transmittalDateFrom" class="form-label fw-bold">Date From</label>
-                                        <input type="text" name="transmittalDateFrom" id="transmittalDateFrom" class="form-control">
-                                    </div>
-                                    <div class="col-md-3">
-                                        <label for="transmittalDateTo" class="form-label fw-bold">Date To</label>
-                                        <input type="text" name="transmittalDateTo" id="transmittalDateTo" class="form-control">
+                                    <div class="col-md-6">
+                                        <label for="searchNameFrom" class="form-label fw-bold">Name From</label>
+                                        <input type="text" name="searchNameFrom" id="searchNameFrom" class="form-control" placeholder="Enter sender name...">
                                     </div>
                                     <div class="col-md-3">
                                         <button class="btn btn-primary w-100" id="transmittalSearchBtn" name="transmittalSearchBtn" onclick="TransmittalSearch();"><i class="fa-solid fa-magnifying-glass me-2"></i> Search</button>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <button class="btn btn-secondary w-100" id="transmittalClearBtn" name="transmittalClearBtn" onclick="ClearSearch();"><i class="fa-solid fa-times me-2"></i> Clear</button>
                                     </div>
                                 </div>
                             </div>
@@ -704,17 +708,6 @@
                         $(this).val(numbersOnly);
                     }
                 });
-
-                // Date picker configuration: Search Transmittal dates - no future dates
-                // Using setTimeout to ensure this runs after external JS initialization
-                setTimeout(function() {
-                    $('#transmittalDateFrom, #transmittalDateTo').datetimepicker({
-                        format: 'Y-m-d',
-                        timepicker: false,
-                        maxDate: 0, // 0 means today, prevents future dates
-                        scrollInput: false
-                    });
-                }, 100);
 
                 // Date picker configuration: Carrier and Received By dates - no future dates
                 setTimeout(function() {
