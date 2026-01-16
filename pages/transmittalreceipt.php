@@ -26,269 +26,84 @@
         ?>
 
             <style>
-                :root {
-                    --primary-color: #ffffffff;
-                    --primary-hover: #ffffffff;
-                    --secondary-color: #64748b;
-                    --success-color: #10b981;
-                    --danger-color: #ef4444;
-                    --warning-color: #f59e0b;
-                    --dark-color: #1f2937;
-                    --light-bg: #f8fafc;
-                    --border-color: #e2e8f0;
-                    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-                    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-                    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
-                }
-
-                body {
-                    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-                    min-height: 100vh;
-                }
-
                 label {
-                    color: #000000 !important;
-                    font-weight: 500;
-                    margin-bottom: 0.5rem;
+                    color: #090909;
                 }
-
-                .form-control, .form-select {
-                    color: var(--dark-color) !important;
-                    border: 2px solid var(--border-color) !important;
-                    border-radius: 8px !important;
-                    padding: 0.75rem 1rem !important;
-                    font-size: 0.95rem !important;
-                    transition: all 0.3s ease !important;
-                    background-color: white !important;
+                .form-control {
+                    color: #090909 !important;
+                    border:1px solid #000000 !important;
                 }
-
-                .form-control:focus, .form-select:focus {
-                    border-color: var(--primary-color) !important;
-                    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1) !important;
-                    outline: none !important;
+                .form-select {
+                    color: #090909 !important;
+                    border:1px solid #000000 !important;
                 }
-
-                .form-control:disabled, .form-select:disabled {
-                    background-color: #f1f5f9 !important;
-                    opacity: 0.7;
-                }
-
                 /* Selection box */
                 .select2-container--default .select2-selection--single {
-                    border: 2px solid var(--border-color) !important;
-                    border-radius: 8px !important;
-                    height: 46px !important;
-                    padding: 0.5rem !important;
+                    border: 1px solid #000000 !important;
                 }
 
                 .select2-container--default .select2-selection--single .select2-selection__rendered {
-                    color: var(--dark-color) !important;
-                    line-height: 28px !important;
+                    color: #090909 !important;
                 }
 
                 /* Dropdown */
                 .select2-dropdown {
-                    border: 2px solid var(--border-color) !important;
-                    border-radius: 8px !important;
-                    box-shadow: var(--shadow-lg) !important;
+                    border: 1px solid #000000 !important;
                 }
 
                 .select2-results__option {
-                    color: var(--dark-color) !important;
-                    padding: 0.75rem 1rem !important;
+                    color: #090909 !important;
                 }
 
                 /* Optional: Highlighted option */
                 .select2-results__option--highlighted {
-                    background-color: var(--primary-color) !important;
-                    color: white !important;
+                    background-color: #e0e0e0 !important;
+                    color: #090909 !important;
                 }
-
-                .card-container {
-                    background: white;
-                    border-radius: 16px;
-                    box-shadow: var(--shadow-md);
-                    padding: 2rem;
-                    margin-bottom: 1.5rem;
-                    border: 1px solid var(--border-color);
-                    transition: transform 0.3s ease, box-shadow 0.3s ease;
+                /* Ensure selected option text stays dark */
+                .select2-results__option--selected {
+                    color: #090909 !important;
+                    background-color: #e0e0e0 !important;
                 }
-
-                .card-container:hover {
-                    transform: translateY(-2px);
-                    box-shadow: var(--shadow-lg);
+                .select2-container--default .select2-results__option--selected {
+                    color: #090909 !important;
                 }
-
-                .section-title {
-                    color: var(--dark-color);
-                    font-size: 1.25rem;
-                    font-weight: 600;
-                    margin-bottom: 1rem;
-                    padding-bottom: 0.75rem;
-                    border-bottom: 2px solid var(--border-color);
+                .select2-container--default .select2-results__option--highlighted[aria-selected] {
+                    color: #090909 !important;
+                    background-color: #e0e0e0 !important;
                 }
-
-                .btn {
-                    border-radius: 8px;
-                    padding: 0.625rem 1.25rem;
-                    font-weight: 500;
-                    transition: all 0.3s ease;
-                    border: none;
-                    font-size: 0.95rem;
+                .select2-container--default .select2-results__option--selectable:hover {
+                    color: #090909 !important;
+                    background-color: #e0e0e0 !important;
+                }
+                /* Make jQuery datetimepicker Clear button text white */
+                .xdsoft_datetimepicker .xdsoft_clear_button {
                     color: #ffffff !important;
                 }
-
-                .btn-primary {
-                    background: #82ccf8ff !important;
-                    color: #ffffff !important;
-                    border: none;
-                    padding: 0.625rem 1.25rem;
-                    font-weight: 500;
-                    transition: all 0.3s ease;
-                    border-radius: 8px;
-                    font-size: 0.95rem;
+                form {
+                    width: 100%;
+                    padding: 20px;
+                    background-color: white;
+                    border-radius: 10px;
                 }
-
-                .btn-primary:hover {
-                    background: #6bb6ff !important;
-                    transform: translateY(-1px);
-                    box-shadow: var(--shadow-md);
-                }
-
-                .btn-success {
-                    background: linear-gradient(135deg, var(--success-color), #059669);
-                    color: #ffffff !important;
-                    box-shadow: var(--shadow-sm);
-                }
-
-                .btn-success:hover {
-                    background: linear-gradient(135deg, #059669, #047857);
-                    transform: translateY(-1px);
-                    box-shadow: var(--shadow-md);
-                }
-
-                .btn-danger {
-                    background: linear-gradient(135deg, var(--danger-color), #dc2626);
-                    color: #ffffff !important;
-                    box-shadow: var(--shadow-sm);
-                }
-
-                .btn-danger:hover {
-                    background: linear-gradient(135deg, #dc2626, #b91c1c);
-                    transform: translateY(-1px);
-                    box-shadow: var(--shadow-md);
-                }
-
-                .table {
-                    border-radius: 8px;
-                    overflow: hidden;
-                    box-shadow: var(--shadow-sm);
-                }
-
-                .table thead th {
-                    background: #f8f9fa !important;
-                    color: #000000 !important;
-                    font-weight: 600;
-                    padding: 1rem 0.75rem;
-                    border: 1px solid #e2e8f0 !important;
-                    font-size: 0.875rem;
-                    text-transform: uppercase;
-                    letter-spacing: 0.5px;
-                }
-
-                .table tbody tr {
-                    background: #ffffff !important;
-                    transition: all 0.3s ease;
-                }
-
-                .table tbody tr:hover {
-                    background: #f8f9fa !important;
-                    transform: scale(1.01);
-                }
-
-                .table tbody td {
-                    padding: 0.875rem 0.75rem;
-                    border-color: #e2e8f0 !important;
-                    vertical-align: middle;
-                    color: #000000 !important;
-                }
-
-                .form-check-input:checked {
-                    background-color: var(--primary-color);
-                    border-color: var(--primary-color);
-                }
-
-                .form-check-input:focus {
-                    border-color: var(--primary-color);
-                    box-shadow: 0 0 0 0.2rem rgba(37, 99, 235, 0.25);
-                }
-
-                hr {
-                    border: none;
-                    height: 2px;
-                    background: linear-gradient(90deg, transparent, var(--border-color), transparent);
-                    margin: 1.5rem 0;
-                }
-
-                .header-section {
-                    background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
-                    color: white;
-                    padding: 2rem;
-                    border-radius: 16px;
-                    box-shadow: var(--shadow-lg);
-                    margin-bottom: 2rem;
-                }
-
-                .header-section h5 {
-                    margin: 0;
-                    font-size: 1.5rem;
-                    font-weight: 600;
-                }
-
-                .modal-content {
-                    border-radius: 16px;
-                    border: none;
-                    box-shadow: var(--shadow-lg);
-                }
-
-                .modal-header {
-                    background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
-                    color: white;
-                    border-radius: 16px 16px 0 0;
-                    border: none;
-                }
-
-                .modal-header .btn-close {
-                    filter: brightness(0) invert(1);
-                }
-
-                .input-group-text {
-                    background-color: var(--light-bg);
-                    border: 2px solid var(--border-color);
-                    color: var(--dark-color);
-                }
-
-                @keyframes fadeIn {
-                    from { opacity: 0; transform: translateY(20px); }
-                    to { opacity: 1; transform: translateY(0); }
-                }
-
-                .fade-in {
-                    animation: fadeIn 0.6s ease-out;
+                th {
+                    font-weight: bold;
+                    color: #090909;
+                    position: sticky;
+                    top: 0;
                 }
             </style>
 
             <div class="container-fluid mt-1">
                 <!-- Header -->
-                <div class="header-section fade-in">
-                    <h5 style="color: blue; font-weight: bold;"><i class="fa-solid fa-file-contract me-2"></i>Transmittal Receipt</h5>
+                <div class="shadow p-3 rounded-3" style="background-color: white;">
+                    <p style="color: blue; font-weight: bold;" class="fs-5 my-2">Transmittal Receipt</p>
                 </div>
 
                 <!-- Row 1 Search -->
                 <div class="row">
                     <div class="col-md-12 mt-1">
-                        <div class="card-container fade-in">
-                            <form id="myForm" method="POST">
+                        <form id="myForm" method="POST">
                             <div class="row mb-4">
                                 <div class="col-md-8">
                                     <input type="text" name="transmittalNo" class="form-control" id="transmittalNo" placeholder="Transmittal No." disabled>
@@ -304,7 +119,7 @@
                                         <label for="colFormLabel" class="col-sm-1 col-form-label">TO:</label>
 
                                         <div class="col-sm-10">
-                                            <input type="text" class="form-control" name="toRep" id="toRep" placeholder="RECIPIENT NAME">
+                                             <input type="text" class="form-control" name="fromRep" id="fromRep" placeholder="ISYNERGIESINC"disabled>
                                         </div>
                                     </div>
                                 </div>
@@ -312,7 +127,7 @@
                                     <div class="row mb-3">
                                         <label for="colFormLabel" class="col-sm-1  col-form-label">FROM:</label>
                                         <div class="col-sm-9 ms-2">
-                                            <input type="text" class="form-control" name="fromRep" id="fromRep" placeholder="ISYNERGIESINC"disabled>
+                                            <input type="text" class="form-control" name="fromRep" id="fromRep" disabled>
                                         </div>
                                     </div>
                                 </div>
@@ -325,13 +140,14 @@
                 <div class="row mt-3">
                     <!-- Particulars Column -->
                     <div class="col-md-6">
-                        <div class="card-container fade-in">
+                        <div class="p-3 shadow rounded-3" style="background-color:white">
                             <form id="transmittalform" method="POST">
                                 <div class="head">
-                                    <h5 class="section-title"><i class="fa-solid fa-box me-2"></i>Particulars</h5>
+                                    <h5>Particulars</h5>
+                                    <hr style="height:1px">
                                 </div>
-                                <div class="alert alert-info mb-4" role="alert">
-                                    <i class="fa-solid fa-info-circle me-2"></i>Product Information
+                                <div>
+                                    <p>Product Information</p>
                                 </div>
 
                                 <div class="row mb-4 mt-2">
@@ -346,7 +162,7 @@
                                         <label for="">Isyn Branch:</label>
                                     </div>
                                     <div class="col-md-9">
-                                        <select class="form-select" name="isynBranch" id="isynBranch" onchange="LoadBranch(this.value)">
+                                       <select class="form-select" name="isynBranch" id="isynBranch" onchange="LoadBranch(this.value)">
                                                 <option value="" selected>Select</option>
                                                 <option value="HEAD OFFICE">HEAD OFFICE</option>
                                             </select>
@@ -376,7 +192,7 @@
                                 <div class="row mt-2">
                                     <label class="col-sm-3 col-form-label" for="category">Category:</label>
                                     <div class="col-sm-9">
-                                         <select class="form-select" aria-label="Category" name="category" id="category" onchange="LoadSerialProduct(this.value);">
+                                        <select class="form-select" aria-label="Category" name="category" id="category" onchange="LoadSerialProduct(this.value);">
                                                 <option value="" selected>Select</option>
                                                 <option value="Battery">Battery</option>
                                                 <option value="Cable">Cable</option>
@@ -427,10 +243,11 @@
 
                     <!-- Product Summary Column -->
                     <div class="col-md-6">
-                        <div class="card-container fade-in">
+                        <div class="p-3 shadow rounded-3" style="background-color:white">
                             <form id="summary" method="POST">
                                 <div class="head">
-                                    <h5 class="section-title"><i class="fa-solid fa-chart-line me-2"></i>Product Summary</h5>
+                                    <h5>Product Summary</h5>
+                                    <hr style="height:1px">
                                 </div>
                                 <div class="row mt-2">
                                     <label for="psSupplierSI" class="col-md-3 form-label">Supplier SI:</label>
@@ -488,8 +305,7 @@
                 <!--Row 3-->
                 <div class="row mt-3">
                     <div class="col-12">
-                        <div class="card-container fade-in">
-                            <form id="transmittalform2" method="POST" class="needs-validation" novalidate>
+                        <form id="transmittalform2" method="POST" class="needs-validation" novalidate>
                             <div class="row">
                                 <div class="col-md-6">
                                     <div class="row">
@@ -523,15 +339,18 @@
                 <!-- Row 4 -->
                 <div class="row mt-3">
                     <div class="col-md-12">
-                        <div class="card-container fade-in">
-                            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
-                                <div class="d-flex justify-content-between align-items-center mb-3">
-                                    <h6 class="mb-0"><i class="fa-solid fa-list me-2"></i>Items List</h6>
-                                    <div>
-                                        <button type="button" class="btn btn-success px-3 py-2 me-2" id="addbtn" name="addbtn" onclick="addItem();"><i class="fa-solid fa-plus me-1"></i> Add</button>
-                                        <button type="button" class="btn btn-danger" id="cancelProduct" name="cancelProduct" onclick="cancelProduct()" disabled><i class="fa-solid fa-circle-xmark me-1"></i> Cancel Product</button>
+                        <div class="shadow p-3 rounded-3" style="height: 300px; background-color:white; overflow:auto;">
+                            <div class="row">
+                                <div class="col-lg-6 col-md-6">
+                                    <button type="button" class="btn btn-success px-3 py-2 mx-1" id="addbtn" name="addbtn" onclick="addItem();"><i class="fa-solid fa-plus"></i> Add</button>
+                                </div>
+                                <div class="col-lg-6 col-md-6">
+                                    <div class="d-flex justify-content-end">
+                                        <button type="button" class="btn btn-danger" id="cancelProduct" name="cancelProduct" onclick="cancelProduct()" disabled><i class="fa-solid fa-circle-xmark"></i> Cancel Product</button>
                                     </div>
                                 </div>
+                            </div>
+                            <hr style="height: 1px">
                             <table id="itemsTbl" style="width:100%;" class="table table-hover table-bordered">
                                 <thead>
                                     <tr>
@@ -558,13 +377,12 @@
 
                 <div class="row mt-3">
                     <div class="col-md-12">
-                        <div class="card-container fade-in">
+                        <div class="shadow p-3 rounded-3 mb-4" style="background-color: white;">
                             <form id="myForm2" method="POST">
-                                <h6 class="section-title"><i class="fa-solid fa-comment-dots me-2"></i>Additional Details</h6>
-                                <div class="row mb-4">
-                                    <div class="col-md-12">
-                                        <label for="remarks" class="form-label fw-bold">Remarks:</label>
-                                        <textarea id="remarks" name="remarks" class="form-control" rows="3" placeholder="Enter any additional remarks..."></textarea>
+                                <div class="row">
+                                    <div class="col-md-12 mb-3">
+                                        <label for="">Remarks:</label>
+                                        <input type="text" id="remarks" name="remarks" class="form-control">
                                     </div>
                                 </div>
 
@@ -575,52 +393,46 @@
                                     </div>
                                 </div>
 
-                                <div class="row mt-2">
+                                <div class="row">
                                     <div class="col-6">
-                                        <div class="card-container p-3">
-                                            <h6 class="section-title mb-3"><i class="fa-solid fa-truck me-2"></i>Carrier Information</h6>
-                                            <div class="row mt-2">
-                                                <label for="carrier" class="col-md-3 form-label">Carrier:</label>
-                                                <div class="col-md-9">
-                                                    <input type="text" class="form-control" name="carrier" id="carrier" disabled>
-                                                </div>
+                                        <div class="row mt-2">
+                                            <label for="carrier" class="col-md-2 form-label">Carrier:</label>
+                                            <div class="col-md-8">
+                                                <input type="text" class="form-control" name="carrier" id="carrier" disabled>
                                             </div>
-                                            <div class="row mt-2">
-                                                <label for="dateCarrier" class="col-md-3 form-label">Date:</label>
-                                                <div class="col-md-9">
-                                                    <input type="text" class="form-control" name="dateCarrier" id="dateCarrier" disabled>
-                                                </div>
+                                        </div>
+                                        <div class="row mt-2">
+                                            <label for="dateCarrier" class="col-md-2 form-label">Date:</label>
+                                            <div class="col-md-8">
+                                                <input type="text" class="form-control" name="dateCarrier" id="dateCarrier" disabled>
                                             </div>
                                         </div>
                                     </div>
                                     <div class="col-md-6">
-                                        <div class="card-container p-3">
-                                            <h6 class="section-title mb-3"><i class="fa-solid fa-user-check me-2"></i>Receipt Information</h6>
-                                            <div class="row mt-2">
-                                                <label for="receivedBy" class="col-md-3 form-label">Received by:</label>
-                                                <div class="col-md-9">
-                                                    <input type="text" class="form-control" name="receivedBy" id="receivedBy" disabled>
-                                                </div>
+                                        <div class="row mt-2">
+                                            <label for="receivedBy" class="col-md-3 form-label">Received by:</label>
+                                            <div class="col-md-8">
+                                                <input type="text" class="form-control" name="receivedBy" id="receivedBy" disabled>
                                             </div>
-                                            <div class="row mt-2">
-                                                <label for="dateReceivedBy" class="col-md-3 form-label">Date:</label>
-                                                <div class="col-md-9">
-                                                    <input type="text" class="form-control" name="dateReceivedBy" id="dateReceivedBy" disabled>
-                                                </div>
+                                        </div>
+                                        <div class="row mt-2">
+                                            <label for="dateReceivedBy" class="col-md-3 form-label">Date:</label>
+                                            <div class="col-md-8">
+                                                <input type="text" class="form-control" name="dateReceivedBy" id="dateReceivedBy" disabled>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </form>
-                            <div class="buttons d-flex justify-content-end mt-4">
-                                <button type="button" class="btn btn-primary btn-lg px-4" id="submitBtn" name="submitBtn" onclick="SubmitBtn();"><i class="fa-solid fa-floppy-disk me-2"></i> Submit Transmittal</button>
+                            <div class="buttons d-flex justify-content-end mt-3">
+                                <button type="button" class="btn btn-primary mx-2" id="submitBtn" name="submitBtn" onclick="SubmitBtn();"><i class="fa-solid fa-floppy-disk"></i> Submit</button>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="modal fade" id="SearchTransmittalMDL" data-bs-backdrop="true" data-bs-keyboard="false" tabindex="-1" aria-labelledby="SearchTransmittal" aria-hidden="true">
+            <div class="modal fade" id="SearchTransmittalMDL" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="SearchTransmittal" aria-hidden="true">
                 <div class="modal-dialog modal-dialog-centered modal-lg">
                     <div class="modal-content">
                         <div class="modal-header">
@@ -628,22 +440,21 @@
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
                         <div class="modal-body">
-                            <div class="card-container mb-3">
-                                <div class="row align-items-end">
-                                    <div class="col-md-6">
-                                        <label for="searchNameFrom" class="form-label fw-bold">Name From</label>
-                                        <input type="text" name="searchNameFrom" id="searchNameFrom" class="form-control" placeholder="Enter sender name...">
-                                    </div>
-                                    <div class="col-md-3">
-                                        <button class="btn btn-primary w-100" id="transmittalSearchBtn" name="transmittalSearchBtn" onclick="TransmittalSearch();"><i class="fa-solid fa-magnifying-glass me-2"></i> Search</button>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <button class="btn btn-secondary w-100" id="transmittalClearBtn" name="transmittalClearBtn" onclick="ClearSearch();"><i class="fa-solid fa-times me-2"></i> Clear</button>
+                            <div class="row align-items-end">
+                                <div class="col-md-6">
+                                    <label for="transmittalClient" class="bold-label">Client</label>
+                                    <input type="text" name="transmittalClient" id="transmittalClient" class="form-control" placeholder="Client name">
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="d-flex gap-2">
+                                        <button class="btn btn-primary" id="transmittalSearchBtn" name="transmittalSearchBtn" onclick="TransmittalSearch();"><i class="fa-solid fa-magnifying-glass"></i> Search</button>
+                                        <button class="btn btn-secondary" id="transmittalClearBtn" name="transmittalClearBtn" onclick="TransmittalClear();"></button>Clear</button>
                                     </div>
                                 </div>
                             </div>
-                            <div class="table-responsive">
-                                <table id="listTbl" class="table table-hover table-bordered" style="width:100%">
+                            <hr style="height: 1px">
+                            <div class="">
+                                <table id="listTbl" class="table table-bordered table-hover" style="width:100%">
                                     <thead>
                                         <tr>
                                             <th width="20%">TRANS NO.</th>
@@ -657,9 +468,9 @@
                                     </tbody>
                                 </table>
                             </div>
-                            <div class="row mt-4">
+                            <div class="row mt-3">
                                 <div class="col-12">
-                                    <button class="btn btn-success btn-lg w-100" type="button" id="rePrint" name="rePrint" onclick="RePrint();" disabled><i class="fa-solid fa-retweet me-2"></i> REPRINT</button>
+                                    <button class="btn btn-success col-12" type="button" id="rePrint" name="rePrint" onclick="RePrint();" disabled><i class="fa-solid fa-retweet"></i> REPRINT</button>
                                 </div>
                             </div>
                         </div>
@@ -674,141 +485,6 @@
         <script src="../../assets/datetimepicker/jquery.datetimepicker.full.js"></script>
         <script src="../../assets/select2/js/select2.full.min.js"></script>
         <script src="../../js/inventorymanagement/transmittalreceipt.js?<?= time() ?>"></script>
-
-        <script>
-            $(document).ready(function() {
-                // Validation: TO and FROM recipient fields - letters only
-                $('#toRep, #fromRep').on('input', function() {
-                    var value = $(this).val();
-                    // Remove any characters that are not letters (including spaces and special characters)
-                    var lettersOnly = value.replace(/[^a-zA-Z\s]/g, '');
-                    if (value !== lettersOnly) {
-                        $(this).val(lettersOnly);
-                    }
-                });
-
-                // Validation: Edit SRP field - numbers only (no letters or special characters)
-                $('#finalSRP').on('input', function() {
-                    var value = $(this).val();
-                    // Remove any characters that are not numbers or decimal point
-                    var numbersOnly = value.replace(/[^0-9.]/g, '');
-                    
-                    // Ensure only one decimal point
-                    var parts = numbersOnly.split('.');
-                    if (parts.length > 2) {
-                        numbersOnly = parts[0] + '.' + parts.slice(1).join('');
-                    }
-                    
-                    // Limit decimal places to 2
-                    if (parts.length === 2 && parts[1].length > 2) {
-                        numbersOnly = parts[0] + '.' + parts[1].substring(0, 2);
-                    }
-                    
-                    if (value !== numbersOnly) {
-                        $(this).val(numbersOnly);
-                    }
-                });
-
-                // Date picker configuration: Carrier and Received By dates - no future dates
-                setTimeout(function() {
-                    // Initialize carrier date picker
-                    $('#dateCarrier').datetimepicker({
-                        format: 'Y-m-d',
-                        timepicker: false,
-                        maxDate: 0, // 0 means today, prevents future dates
-                        scrollInput: false,
-                        onSelectDate: function(ct, $input) {
-                            // When carrier date is selected, update received date min date
-                            var carrierDate = $input.val();
-                            updateReceivedDateMinDate(carrierDate);
-                        }
-                    });
-                    
-                    // Initialize received date picker
-                    $('#dateReceivedBy').datetimepicker({
-                        format: 'Y-m-d',
-                        timepicker: false,
-                        maxDate: 0, // 0 means today, prevents future dates
-                        scrollInput: false
-                    });
-                    
-                    // Function to update received date minimum date
-                    function updateReceivedDateMinDate(carrierDate) {
-                        var receivedDate = $('#dateReceivedBy').val();
-                        
-                        if (carrierDate) {
-                            // Update received date picker to have minimum date of carrier date
-                            try {
-                                $('#dateReceivedBy').datetimepicker('destroy');
-                            } catch(e) {
-                                // Ignore if already destroyed
-                            }
-                            
-                            $('#dateReceivedBy').datetimepicker({
-                                format: 'Y-m-d',
-                                timepicker: false,
-                                maxDate: 0, // No future dates
-                                minDate: carrierDate, // Must be after or equal to carrier date
-                                scrollInput: false
-                            });
-                            
-                            // If received date is already set and is before carrier date, clear it
-                            if (receivedDate) {
-                                var carrierDateObj = new Date(carrierDate);
-                                var receivedDateObj = new Date(receivedDate);
-                                
-                                if (receivedDateObj < carrierDateObj) {
-                                    alert('Received date must be after or equal to carrier date.');
-                                    $('#dateReceivedBy').val('');
-                                }
-                            }
-                        } else {
-                            // If carrier date is cleared, remove min date restriction
-                            try {
-                                $('#dateReceivedBy').datetimepicker('destroy');
-                            } catch(e) {
-                                // Ignore if already destroyed
-                            }
-                            
-                            $('#dateReceivedBy').datetimepicker({
-                                format: 'Y-m-d',
-                                timepicker: false,
-                                maxDate: 0, // No future dates
-                                scrollInput: false
-                            });
-                        }
-                    }
-                    
-                    // When carrier date changes, update received date minimum date
-                    $('#dateCarrier').on('change', function() {
-                        var carrierDate = $(this).val();
-                        updateReceivedDateMinDate(carrierDate);
-                    });
-                    
-                    // Validate received date when it changes
-                    $('#dateReceivedBy').on('change', function() {
-                        var carrierDate = $('#dateCarrier').val();
-                        var receivedDate = $(this).val();
-                        
-                        if (carrierDate && receivedDate) {
-                            // Compare dates
-                            var carrierDateObj = new Date(carrierDate);
-                            var receivedDateObj = new Date(receivedDate);
-                            
-                            // Set time to 00:00:00 for accurate date comparison
-                            carrierDateObj.setHours(0, 0, 0, 0);
-                            receivedDateObj.setHours(0, 0, 0, 0);
-                            
-                            if (receivedDateObj < carrierDateObj) {
-                                alert('Received date must be after or equal to carrier date.');
-                                $(this).val('');
-                                return false;
-                            }
-                        }
-                    });
-                }, 100);
-            });
-        </script>
 
     </body>
 </html>
