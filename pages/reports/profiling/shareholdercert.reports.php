@@ -225,4 +225,3 @@ class Reports extends Database
 
 }
 ?>
-
