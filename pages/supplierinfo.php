@@ -11,11 +11,14 @@
       <link rel="stylesheet" href="../../assets/select2/css/select2.min.css">
 
     <body class="  ">
+        <!-- loader Start -->
         <div id="loading">
         <div class="loader simple-loader">
             <div class="loader-body"></div>
         </div>
         </div>
+        <!-- loader END -->
+
         <style>
             label {
                 color: #090909;
@@ -56,50 +59,6 @@
             .selected td {
                 background-color: lightgray;
             } 
-            
-            /* --- NEW CSS FOR PHONE INPUT --- */
-            .custom-phone-group {
-                display: flex;
-                align-items: center;
-                border: 1px solid #ced4da; /* Matches Bootstrap default border */
-                border-radius: 0.375rem;   /* Matches Bootstrap default radius */
-                padding: 0.375rem 0.75rem; /* Matches Bootstrap input padding */
-                background-color: #e9ecef; /* Default to disabled gray initially */
-                transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-            }
-            
-            /* When the group is NOT disabled (white background) */
-            .custom-phone-group:not(.disabled-group) {
-                background-color: #fff;
-            }
-
-            .custom-phone-group:focus-within {
-                border-color: #86b7fe;
-                outline: 0;
-                box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
-            }
-
-            .custom-prefix {
-                color: #495057;
-                margin-right: 5px;
-                pointer-events: none;
-                user-select: none;
-            }
-
-            .custom-phone-input {
-                border: none;
-                outline: none;
-                width: 100%;
-                background: transparent;
-                color: #212529;
-                padding: 0;
-            }
-            
-            /* Styles to ensure validation red border shows on the wrapper if needed 
-               (You might need to toggle a class 'is-invalid' on the wrapper via JS) */
-            .custom-phone-group.is-invalid {
-                border-color: #dc3545;
-            }
         </style>
 
         <?php
@@ -125,7 +84,10 @@
                                         <th style="width:20%;text-align:center">Supplier Name</th>
                                         <th style="width:20%;text-align:center">TIN No.</th>
                                         <th style="width:20%;text-align:center">Mobile No./Tel. No.</th>
-                                        <th style="width:20%;text-align:center">Date Encoded</th>                             
+                                        <th style="width:20%;text-align:center">Email</th>
+                                        <th style="width:20%;text-align:center">Social Link</th>
+                                        <th style="width:20%;text-align:center">Full Address</th>
+                                        <th style="width:20%;text-align:center">Date Encoded</th>                                            
                                     </tr>
                                 </thead>
                                 <tbody id="SupplierInfoList">
@@ -148,14 +110,14 @@
                             <div class="row">
                                 <div class="col-md-4">
                                     <label for="supplierNo" class="form-label">Supplier No.</label>
-                                    <input type="num" class="form-control" id="supplierNo" name="supplierNo" placeholder="Supplier No." oninput="this.value = this.value.replace(/[^0-9]/g, '')" required disabled>
+                                    <input type="num" class="form-control" id="supplierNo" name="supplierNo" placeholder="Supplier No." required disabled>
                                     <div class="invalid-feedback">
                                         Please provide your Supplier No.
                                     </div>
                                 </div>
                                 <div class="col-md-4">
                                     <label for="supplierName" class="form-label">Name</label>
-                                    <input type="text" class="form-control" id="supplierName" name="supplierName" placeholder="Supplier's Name" required disabled oninput="this.value = this.value.replace(/[^a-zA-Z\s]/g, '')">
+                                    <input type="text" class="form-control" id="supplierName" name="supplierName" placeholder="Supplier's Name" required disabled>
                                     <div class="invalid-feedback">
                                         Please provide your Company Name.
                                     </div>
@@ -170,32 +132,18 @@
                             <div class="row mt-2">
                                 <div class="col-md-4 mb-2">
                                     <label for="email" class="form-label">Email Address</label>
-                                    <input type="text" class="form-control" id="email" name="email" placeholder="exmple@gmail.com" disabled pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$" title="Please enter a valid email address (e.g., user@example.com)">
+                                    <input type="text" class="form-control" id="email" name="email" placeholder="exmple@gmail.com" disabled>
                                     <div class="invalid-feedback">
                                         Enter your email address.
                                     </div>
                                 </div>
                                 <div class="col-md-4">
                                     <div class="row">
-                                        
                                         <div class="col-md-6">
-                                            <label for="mobileNumber" class="form-label">Mobile No. </label>
-                                            
-                                            <div class="custom-phone-group disabled-group" id="mobileNumberWrapper">
-                                                <span class="custom-prefix">09</span>
-                                                <input type="text" 
-                                                    class="custom-phone-input" 
-                                                    id="mobileNumber" 
-                                                    name="mobileNumber" 
-                                                    placeholder="*********" 
-                                                    maxlength="9" 
-                                                    required
-                                                    disabled
-                                                    oninput="this.value = this.value.replace(/[^0-9]/g, '')">
-                                            </div>
-                                            
+                                            <label for="mobileNumber" class="form-label">Mobile No.</label>
+                                            <input type="text" class="form-control" id="mobileNumber" name="mobileNumber" placeholder="09*********" disabled maxlength="11">
                                             <div class="invalid-feedback">
-                                                Please provide the remaining 9 digits of your Contact No.
+                                                Please provide your Contact No.
                                             </div>
                                         </div>
                                         <div class="col-md-6">
@@ -265,9 +213,11 @@
                             <div class="row">
                                 <div class="col-md-6">
                                     <label for="street" class="form-label mt-2">Street/House No./ Zone</label>
-                                    <input type="text" class="form-control" id="street" name="street" placeholder="Street/House No./ Zone" disabled>
+                                    <select class="form-select" id="street" name="street" disabled>
+                                        <option value="" selected>Select</option>
+                                    </select>
                                     <div class="invalid-feedback">
-                                        Please enter street.
+                                        Please select street or enter manually.
                                     </div>
                                 </div>
                             </div>
