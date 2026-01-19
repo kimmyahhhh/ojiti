@@ -60,6 +60,26 @@
                     background-color: #e0e0e0 !important;
                     color: #090909 !important;
                 }
+                /* Ensure selected option text stays dark */
+                .select2-results__option--selected {
+                    color: #090909 !important;
+                    background-color: #e0e0e0 !important;
+                }
+                .select2-container--default .select2-results__option--selected {
+                    color: #090909 !important;
+                }
+                .select2-container--default .select2-results__option--highlighted[aria-selected] {
+                    color: #090909 !important;
+                    background-color: #e0e0e0 !important;
+                }
+                .select2-container--default .select2-results__option--selectable:hover {
+                    color: #090909 !important;
+                    background-color: #e0e0e0 !important;
+                }
+                /* Make jQuery datetimepicker Clear button text white */
+                .xdsoft_datetimepicker .xdsoft_clear_button {
+                    color: #ffffff !important;
+                }
                 form {
                     width: 100%;
                     padding: 20px;
@@ -99,7 +119,7 @@
                                         <label for="colFormLabel" class="col-sm-1 col-form-label">TO:</label>
 
                                         <div class="col-sm-10">
-                                            <input type="text" class="form-control" name="toRep" id="toRep" placeholder="RECIPIENT NAME">
+                                             <input type="text" class="form-control" name="fromRep" id="fromRep" disabled>
                                         </div>
                                     </div>
                                 </div>
@@ -107,7 +127,7 @@
                                     <div class="row mb-3">
                                         <label for="colFormLabel" class="col-sm-1  col-form-label">FROM:</label>
                                         <div class="col-sm-9 ms-2">
-                                            <input type="text" class="form-control" name="fromRep" id="fromRep" disabled>
+                                            <input type="text" class="form-control" name="fromRep" id="fromRep" placeholder="ISYNERGIESINC" disabled>
                                         </div>
                                     </div>
                                 </div>
@@ -142,9 +162,10 @@
                                         <label for="">Isyn Branch:</label>
                                     </div>
                                     <div class="col-md-9">
-                                        <select class="form-select" name="isynBranch" id="isynBranch" onchange="LoadBranch(this.value)">
-                                            <option value="" selected disabled>Select</option>
-                                        </select>
+                                       <select class="form-select" name="isynBranch" id="isynBranch" onchange="LoadBranch(this.value)">
+                                                <option value="" selected>Select</option>
+                                                <option value="HEAD OFFICE">HEAD OFFICE</option>
+                                            </select>
                                     </div>
                                 </div>
 
@@ -161,9 +182,10 @@
                                     <label class="col-sm-3 col-form-label" for="type">Type:</label>
                                     <div class="col-md-9">
                                         <select class="form-select" name="type" id="type" onchange="LoadCategory(this.value);">
-                                            <option value="" selected>Select</option>
-                                            <!-- Populate options dynamically -->
-                                        </select>
+                                                <option value="" selected>Select</option>
+                                                <option value="With VAT">With VAT</option>
+                                                <option value="Non-VAT">Non-VAT</option>
+                                            </select>
                                     </div>
                                 </div>
 
@@ -171,9 +193,12 @@
                                     <label class="col-sm-3 col-form-label" for="category">Category:</label>
                                     <div class="col-sm-9">
                                         <select class="form-select" aria-label="Category" name="category" id="category" onchange="LoadSerialProduct(this.value);">
-                                            <!-- <option value="" selected>Select</option> -->
-                                            <!-- Populate options dynamically -->
-                                        </select>
+                                                <option value="" selected>Select</option>
+                                                <option value="Battery">Battery</option>
+                                                <option value="Cable">Cable</option>
+                                                <option value="Cartridge">Cartridge</option>
+                                                <option value="Connector">Connector</option>
+                                            </select>
                                     </div>
                                 </div>
 
@@ -416,16 +441,15 @@
                         </div>
                         <div class="modal-body">
                             <div class="row align-items-end">
-                                <div class="col-md-3">
-                                    <label for="transmittalDateFrom" class="bold-label">Date From</label>
-                                    <input type="text" name="transmittalDateFrom" id="transmittalDateFrom" class="form-control">
+                                <div class="col-md-6">
+                                    <label for="transmittalClient" class="bold-label">Client</label>
+                                    <input type="text" name="transmittalClient" id="transmittalClient" class="form-control" placeholder="Client name">
                                 </div>
-                                <div class="col-md-3">
-                                    <label for="transmittalDateTo" class="bold-label">Date To</label>
-                                    <input type="text" name="transmittalDateTo" id="transmittalDateTo" class="form-control">
-                                </div>
-                                <div class="col-md-3">
-                                    <button class="btn btn-primary" id="transmittalSearchBtn" name="transmittalSearchBtn" onclick="TransmittalSearch();"><i class="fa-solid fa-magnifying-glass"></i> Search</button>
+                                <div class="col-md-6">
+                                    <div class="d-flex gap-2">
+                                        <button class="btn btn-primary" id="transmittalSearchBtn" name="transmittalSearchBtn" onclick="TransmittalSearch();"><i class="fa-solid fa-magnifying-glass"></i> Search</button>
+                                        <button class="btn btn-secondary" id="transmittalClearBtn" name="transmittalClearBtn" onclick="TransmittalClear();"><i class="fa-regular fa-circle-xmark"></i> Clear</button>
+                                    </div>
                                 </div>
                             </div>
                             <hr style="height: 1px">
@@ -446,7 +470,7 @@
                             </div>
                             <div class="row mt-3">
                                 <div class="col-12">
-                                    <button class="btn btn-success col-12" type="button" id="rePrint" name="rePrint" onclick="RePrint();" disabled><i class="fa-solid fa-retweet"></i> REPRINT</button>
+                                    <button class="btn btn-success col-12" type="button" id="rePrint" name="rePrint" onclick="RePrint();" disabled><i class="fa-solid fa-print"></i> REPRINT</button>
                                 </div>
                             </div>
                         </div>
@@ -461,140 +485,6 @@
         <script src="../../assets/datetimepicker/jquery.datetimepicker.full.js"></script>
         <script src="../../assets/select2/js/select2.full.min.js"></script>
         <script src="../../js/inventorymanagement/transmittalreceipt.js?<?= time() ?>"></script>
-
-        <script>
-            $(document).ready(function() {
-                // Validation: TO and FROM recipient fields - letters only
-                $('#toRep, #fromRep').on('input', function() {
-                    var value = $(this).val();
-                    // Remove any characters that are not letters (including spaces and special characters)
-                    var lettersOnly = value.replace(/[^a-zA-Z\s]/g, '');
-                    if (value !== lettersOnly) {
-                        $(this).val(lettersOnly);
-                    }
-                });
-
-                // Validation: Edit SRP field - letters only (no numbers or special characters)
-                $('#finalSRP').on('input', function() {
-                    var value = $(this).val();
-                    // Remove any characters that are not letters (including spaces, numbers, and special characters)
-                    var lettersOnly = value.replace(/[^a-zA-Z\s]/g, '');
-                    if (value !== lettersOnly) {
-                        $(this).val(lettersOnly);
-                    }
-                });
-
-                // Date picker configuration: Search Transmittal dates - no future dates
-                // Using setTimeout to ensure this runs after external JS initialization
-                setTimeout(function() {
-                    $('#transmittalDateFrom, #transmittalDateTo').datetimepicker({
-                        format: 'Y-m-d',
-                        timepicker: false,
-                        maxDate: 0, // 0 means today, prevents future dates
-                        scrollInput: false
-                    });
-                }, 100);
-
-                // Date picker configuration: Carrier and Received By dates - no future dates
-                setTimeout(function() {
-                    // Initialize carrier date picker
-                    $('#dateCarrier').datetimepicker({
-                        format: 'Y-m-d',
-                        timepicker: false,
-                        maxDate: 0, // 0 means today, prevents future dates
-                        scrollInput: false,
-                        onSelectDate: function(ct, $input) {
-                            // When carrier date is selected, update received date min date
-                            var carrierDate = $input.val();
-                            updateReceivedDateMinDate(carrierDate);
-                        }
-                    });
-                    
-                    // Initialize received date picker
-                    $('#dateReceivedBy').datetimepicker({
-                        format: 'Y-m-d',
-                        timepicker: false,
-                        maxDate: 0, // 0 means today, prevents future dates
-                        scrollInput: false
-                    });
-                    
-                    // Function to update received date minimum date
-                    function updateReceivedDateMinDate(carrierDate) {
-                        var receivedDate = $('#dateReceivedBy').val();
-                        
-                        if (carrierDate) {
-                            // Update received date picker to have minimum date of carrier date
-                            try {
-                                $('#dateReceivedBy').datetimepicker('destroy');
-                            } catch(e) {
-                                // Ignore if already destroyed
-                            }
-                            
-                            $('#dateReceivedBy').datetimepicker({
-                                format: 'Y-m-d',
-                                timepicker: false,
-                                maxDate: 0, // No future dates
-                                minDate: carrierDate, // Must be after or equal to carrier date
-                                scrollInput: false
-                            });
-                            
-                            // If received date is already set and is before carrier date, clear it
-                            if (receivedDate) {
-                                var carrierDateObj = new Date(carrierDate);
-                                var receivedDateObj = new Date(receivedDate);
-                                
-                                if (receivedDateObj < carrierDateObj) {
-                                    alert('Received date must be after or equal to carrier date.');
-                                    $('#dateReceivedBy').val('');
-                                }
-                            }
-                        } else {
-                            // If carrier date is cleared, remove min date restriction
-                            try {
-                                $('#dateReceivedBy').datetimepicker('destroy');
-                            } catch(e) {
-                                // Ignore if already destroyed
-                            }
-                            
-                            $('#dateReceivedBy').datetimepicker({
-                                format: 'Y-m-d',
-                                timepicker: false,
-                                maxDate: 0, // No future dates
-                                scrollInput: false
-                            });
-                        }
-                    }
-                    
-                    // When carrier date changes, update received date minimum date
-                    $('#dateCarrier').on('change', function() {
-                        var carrierDate = $(this).val();
-                        updateReceivedDateMinDate(carrierDate);
-                    });
-                    
-                    // Validate received date when it changes
-                    $('#dateReceivedBy').on('change', function() {
-                        var carrierDate = $('#dateCarrier').val();
-                        var receivedDate = $(this).val();
-                        
-                        if (carrierDate && receivedDate) {
-                            // Compare dates
-                            var carrierDateObj = new Date(carrierDate);
-                            var receivedDateObj = new Date(receivedDate);
-                            
-                            // Set time to 00:00:00 for accurate date comparison
-                            carrierDateObj.setHours(0, 0, 0, 0);
-                            receivedDateObj.setHours(0, 0, 0, 0);
-                            
-                            if (receivedDateObj < carrierDateObj) {
-                                alert('Received date must be after or equal to carrier date.');
-                                $(this).val('');
-                                return false;
-                            }
-                        }
-                    });
-                }, 100);
-            });
-        </script>
 
     </body>
 </html>
