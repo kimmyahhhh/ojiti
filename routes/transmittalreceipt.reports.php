@@ -398,7 +398,7 @@ class Reports extends Database
                 // Title under address
                 $pdf->SetFont('helvetica','B',18);
                 $pdf->SetXY(0, $logoY + $logoHeight + 7);
-                $pdf->Cell($pdf->getPageWidth(), 7, 'TRANSMITTAL RECEIPT', 0, 1, 'C');
+                $pdf->Cell($pdf->getPageWidth(), 7, 'TRANSMITTAL RECIPT', 0, 1, 'C');
             } catch (\Exception $e) {
                 error_log('Logo render error: '.$e->getMessage().' — logo skipped');
             }
@@ -425,29 +425,29 @@ class Reports extends Database
         // Build content using code-only template
         $content = '
             <table border="0" style="width:100%; position: relative; z-index: 10;">
-                <tr>
-                    <td width="20%"></td>
-                    <td width="60%" style="line-height:'.($textStartOffset + $transmittalNoVerticalOffset).'px;"></td>
-                    <td width="20%" style="line-height:'.($textStartOffset + $transmittalNoVerticalOffset).'px; text-align:left; font-size:'.$fontSizeTransNo.';">'.$header["TransmittalNO"].'</td>
-                </tr>
+                <!-- Transmittal No moved to right header block to align with FROM -->
                 <tr style="font-size:'.$fontSizeHeader.';">
                     <td width="65%" colspan="2">
                         <table border="0" cellpadding="2" style="width:100%;">
                             <tr>
-                                <td width="14%" style="white-space:nowrap; text-align:left;">TO:</td>
-                                <td width="86%" style="border-bottom:1px solid #000; line-height:'.(18 + $toFieldVerticalOffset).'px;">'.$header["NameTO"].'</td>
+                                <td width="18%" style="white-space:nowrap; text-align:left;">TO:</td>
+                                <td width="82%" style="border-bottom:1px solid #000; line-height:'.(18 + $toFieldVerticalOffset).'px; white-space:nowrap;">'.$header["NameTO"].'</td>
                             </tr>
                             <tr>
-                                <td width="14%" style="white-space:nowrap; text-align:left;">FROM:</td>
-                                <td width="86%" style="border-bottom:1px solid #000; line-height:'.(18 + $fromFieldVerticalOffset).'px; white-space:nowrap;">'.$header["NameFROM"].'</td>
+                                <td width="18%" style="white-space:nowrap; text-align:left;">FROM:</td>
+                                <td width="82%" style="border-bottom:1px solid #000; line-height:'.(18 + $fromFieldVerticalOffset).'px; white-space:nowrap;">'.$header["NameFROM"].'</td>
                             </tr>
                         </table>
                     </td>
                     <td width="35%">
                         <table border="0" cellpadding="2" style="width:100%;">
                             <tr>
-                                <td width="25%">DATE:</td>
-                                <td width="75%" style="border-bottom:1px solid #000; padding-top:'.$dateFieldVerticalOffset.'px;">'.$header["DatePrepared"].'</td>
+                                <td width="30%" style="white-space:nowrap; text-align:left;">No.:</td>
+                                <td width="70%" style="border-bottom:1px solid #000; line-height:'.(18 + $toFieldVerticalOffset).'px; vertical-align:bottom;"><span style="font-size:'.$fontSizeTransNo.';">'.$header["TransmittalNO"].'</span></td>
+                            </tr>
+                            <tr>
+                                <td width="30%" style="white-space:nowrap; text-align:left;">DATE:</td>
+                                <td width="70%" style="border-bottom:1px solid #000; line-height:'.(18 + $toFieldVerticalOffset).'px; vertical-align:bottom;">'.$header["DatePrepared"].'</td>
                             </tr>
                         </table>
                     </td>
@@ -472,12 +472,12 @@ class Reports extends Database
             <table border="0" style="width:100%;"><tr><td style="line-height:20px;"></td></tr></table>
             <table border="0" style="width:100%; font-size:10pt; margin-top:20px;">
                 <tr style="line-height:20px;">
-                    <td width="50%">Carrier: ________________________</td>
+                    <td width="50%">Carrier: _______________________</td>
                     <td width="50%" style="text-align:right">Received by: ________________________</td>
                 </tr>
                 <tr style="line-height:20px;">
                     <td width="50%">Date: __________________________</td>
-                    <td width="50%" style="text-align:right">Date: _______________________________</td>
+                    <td width="50%" style="text-align:right">Date: ________________________________</td>
                 </tr>
             </table>
         ';
