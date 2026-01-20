@@ -103,6 +103,7 @@
                 position: sticky;
                 top: 0;
             }
+            .container { max-width: 96%; margin: 0 auto; padding-left: 8px; padding-right: 8px; }
         </style>
 
             <div class="container mt-4">
@@ -192,9 +193,11 @@
                                         <label for="type">Type:</label>
                                     </div>
                                     <div class="col-md-9">
-                                        <select class="form-select" name="type" id="type">
-                                            <option value="" selected disabled>Select</option>
-                                        </select>
+                                        <select class="form-select" name="type" id="type" onchange="LoadCategory(this.value);">
+                                                <option value="" selected>Select</option>
+                                                <option value="With VAT">With VAT</option>
+                                                <option value="Non-VAT">Non-VAT</option>
+                                            </select>
                                     </div>
                                 </div>
                                 <div class="row mt-3">
@@ -202,9 +205,13 @@
                                         <label for="">Category:</label>
                                     </div>
                                     <div class="col-md-9">
-                                        <select class="form-select" aria-label="Category" required name="category" id="category">
-                                            <option value="" selected disabled>Select</option>
-                                        </select>
+                                            <select class="form-select" aria-label="Category" name="category" id="category" onchange="LoadSerialProduct(this.value);">
+                                                <option value="" selected>Select</option>
+                                                <option value="Battery">Battery</option>
+                                                <option value="Cable">Cable</option>
+                                                <option value="Cartridge">Cartridge</option>
+                                                <option value="Connector">Connector</option>
+                                            </select>
                                     </div>
                                 </div>
                                 <div class="row mt-3 mb-3">
@@ -525,7 +532,7 @@
         <script src="../../assets/select2/js/select2.full.min.js"></script>
         <script src="../../js/inventorymanagement/outgoinginventory.js?<?= time() ?>"></script>
         <script src="./orderconfirmation.js?<?= time() ?>"></script>
-
+        
     </body>
 </html>
 <?php
@@ -533,351 +540,3 @@
     echo '<script> window.location.href = "../../login.php"; </script>';
   }
 ?>
-
-<script>
-    // Function to calculate and update SRP based on quantity and SRP from Product Summary
-    function calculateSRP() {
-        var quantity = parseFloat(document.getElementById('quantityInput').value);
-        var srp = parseFloat(document.getElementById('srpDisplay').value);
-        var editSRP = quantity * srp;
-
-        document.getElementById('editSRP').value = editSRP.toFixed(2);
-    }
-    document.getElementById('quantityInput').addEventListener('input', calculateSRP);
-
-    function editSRPToggle() {
-        var srpToggle = document.getElementById("editSRPtoggle");
-        var editSRP = document.getElementById("editSRP");
-
-        if (!srpToggle.checked) {
-            editSRP.disabled = true;
-        } else {
-            editSRP.disabled = false;
-        }
-    }
-</script>
-
-<script>
-    //for retrieving transmittal_no
-    function setnumber() {
-        var Field = document.getElementById("order_no");
-        var order_no = <?php echo json_encode($order_no); ?>;
-        Field.value = order_no;
-    }
-    window.addEventListener("load", setnumber);
-</script>
-
-<script>
-    function filterType() {
-        var branch = document.getElementById("isynBranch").value;
-        console.log(branch);
-
-        var typeHeadOffice = <?php echo json_encode($typeHeadOffice); ?>;
-        var typeIsynSantiago = <?php echo json_encode($typeIsynSantiago); ?>;
-        var typeSelect = document.getElementById("type");
-
-        typeSelect.innerHTML = ' <option value="" selected disabled>Select</option>';
-
-        if (branch === "HEAD OFFICE") {
-            typeHeadOffice.forEach(function(type) {
-                var option = document.createElement("option");
-                option.text = type;
-                option.value = type;
-                typeSelect.appendChild(option);
-            });
-        } else if (branch === "ISYN-SANTIAGO") {
-            typeIsynSantiago.forEach(function(type) {
-                var option = document.createElement("option");
-                option.text = type;
-                option.value = type;
-                typeSelect.appendChild(option);
-            });
-        }
-    }
-
-    function filterCategories() {
-        var type = document.getElementById("type").value;
-        var categoriesWithVAT = <?php echo json_encode($categoriesWithVAT); ?>;
-        var categoriesNonVAT = <?php echo json_encode($categoriesNonVAT); ?>;
-        var categoriesSelect = document.getElementById("category");
-        categoriesSelect.innerHTML = '<option value="">Select</option>';
-        if (type === "WITH VAT") {
-            categoriesWithVAT.forEach(function(category) {
-                var option = document.createElement("option");
-                option.text = category;
-                option.value = category;
-                categoriesSelect.appendChild(option);
-            });
-        } else if (type === "NON-VAT") {
-            categoriesNonVAT.forEach(function(category) {
-                var option = document.createElement("option");
-                option.text = category;
-                option.value = category;
-                categoriesSelect.appendChild(option);
-            });
-        }
-    }
-    document.addEventListener("DOMContentLoaded", function() {
-        var branchSelect = document.getElementById("isynBranch");
-        branchSelect.addEventListener("change", filterType);
-
-        var typeSelect = document.getElementById("type");
-        typeSelect.addEventListener("change", filterCategories);
-    });
-</script>
-
-<script>
-    $(document).ready(function() {
-        $('#SIno').change(function() {
-            var selectedSIno = $(this).val();
-            console.log('Selected SIno:', selectedSIno);
-            $.ajax({
-                type: 'POST',
-                url: './ajax-inventory/product-summary.php',
-                data: {
-                    SIno: selectedSIno
-                },
-                dataType: 'json',
-                success: function(productSummary) {
-                    console.log(productSummary);
-                    if (productSummary.error) {
-                        alert(productSummary.error);
-                    } else {
-                        updateProductSummary(productSummary);
-                    }
-                },
-                error: function() {
-                    alert('Error fetching product summary');
-                }
-            });
-        });
-
-        function updateProductSummary(productSummary) {
-            $('#serialNodisplay').val(productSummary.Serialno);
-            $('#supplierSIdisplay').val(productSummary.SIno);
-            $('#productDisplay').val(productSummary.product);
-            $('#supplierDisplay').val(productSummary.Supplier);
-            $('#srpDisplay').val(productSummary.SRP);
-            $('#quantityDisplay').val(productSummary.Quantity);
-            $('#delearsPriceDisplay').val(productSummary.DealerPrice);
-            $('#totalPriceDisplay').val(productSummary.TotalPrice);
-            $('#warranty').val(productSummary.Warranty);
-            $('#vat').val(productSummary.Vat);
-            $('#vatsales').val(productSummary.VatSales);
-
-            //$('#editSRP').val(productSummary.SRP);
-        }
-    });
-</script>
-
-<script>
-    $(document).ready(function() {
-        $('#SIno').change(function() {
-            var selectedSIno = $(this).val();
-            console.log('Selected SIno:', selectedSIno);
-            $.ajax({
-                type: 'POST',
-                url: './ajax-inventory/product-summary.php',
-                data: {
-                    SIno: selectedSIno
-                },
-                dataType: 'json',
-
-                error: function() {
-                    alert('Error fetching product summary');
-                }
-            });
-        });
-    });
-
-    $('input[name="inlineRadioOptions"]').on('change', function() {
-        var type = $(this).val();
-        var category = $('#category').val();
-        var selectElement = $('#itemSelect');
-        if (type && category) {
-            $.ajax({
-                type: 'POST',
-                url: './ajax-inventory/fetch_items.php',
-                data: {
-                    type: type,
-                    category: category
-                },
-                success: function(response) {
-                    var data = JSON.parse(response);
-                    selectElement.empty();
-                    selectElement.append('<option selected disabled>Select</option>');
-                    $.each(data.options, function(index, option) {
-                        selectElement.append('<option value="' + option + '">' + option + '</option>');
-                    });
-                },
-                error: function() {
-                    console.error('Error fetching items');
-                }
-            });
-        }
-    });
-
-    $('#itemSelect').change(function() {
-        var selectedOption = $(this).val();
-        var category = $('#category').val();
-        var type = $('input[name="inlineRadioOptions"]:checked').val();
-        if (selectedOption && category && type) {
-            $.ajax({
-                type: 'POST',
-                url: './ajax-inventory/fetch_items.php',
-                data: {
-                    selectedOption: selectedOption,
-                    category: category,
-                    type: type
-                },
-                success: function(response) {
-                    var data = JSON.parse(response);
-                    var siSelectElement = $('#SIno'); // Corrected variable name
-                    siSelectElement.empty();
-                    siSelectElement.append('<option selected disabled>Select</option>');
-                    $.each(data.SIno, function(index, option) { // Corrected property name
-                        siSelectElement.append('<option value="' + option + '">' + option + '</option>');
-                    });
-                },
-                error: function() {
-                    console.error('Error fetching SI numbers');
-                }
-            });
-        }
-    });
-</script>
-
-<script>
-    function addToTable() {
-        var quantity = document.getElementById("quantityInput").value;
-        var srp = document.getElementById("editSRP").value;
-        let datePrepared = new Date().toLocaleDateString();
-        var SIno = document.getElementById("SIno").value;
-        var serialno = document.getElementById("serialNodisplay").value;
-        var product = document.getElementById("productDisplay").value;
-        var category = document.getElementById("category").value;
-        var type = document.getElementById("type").value;
-        var branch = document.getElementById("isynBranch").value;
-        var supplier = document.getElementById("supplierDisplay").value;
-        var warranty = document.getElementById("warranty").value;
-        var vat = document.getElementById("vat").value;
-        var vatsales = document.getElementById("vatsales").value;
-
-        var newRow = document.createElement("tr");
-
-        newRow.innerHTML = `
-            <td>${product}</td>
-            <td>${quantity}</td>
-            <td>${srp}</td>
-            <td>${SIno}</td>
-            <td>${vat}</td>
-            <td>${vatsales}</td>
-            <td>${warranty}</td>
-            <td>${datePrepared}</td>
-            <td>${serialno}</td>
-            <td>${category}</td>
-            <td>${type}</td>
-            <td>${branch}</td>
-            <td>${supplier}</td>        
-        `;
-
-        var tableBody = document.getElementById("table1").querySelector("tbody");
-        tableBody.appendChild(newRow);
-        document.getElementById("orderform").reset();
-
-        document.getElementById("submit-btn").disabled = false;
-        document.getElementById("cancel-btn").disabled = false;
-    }
-
-    document.getElementById("addButton").addEventListener("click", addToTable);
-
-    function cancelProduct() {
-        document.getElementById("myForm").reset();
-        document.getElementById("summary").reset();
-        document.getElementById("orderform").reset();
-        document.getElementById("compute").reset();
-        document.getElementById('tableBody').innerHTML = '';
-    }
-</script>
-
-<script>
-    function saveData() {
-        var tableBody = document.getElementById("table1").querySelector("tbody");
-        var dataArray = [];
-
-        tableBody.querySelectorAll("tr").forEach(function(row) {
-            var cells = row.querySelectorAll("td");
-            var data = {
-                product: cells[0] ? cells[0].innerText || '' : '',
-                quantity: cells[1] ? cells[1].innerText || '' : '',
-                srp: cells[2] ? cells[2].innerText || '' : '',
-                SINo: cells[3] ? cells[3].innerText || '' : '',
-                vat: cells[4] ? cells[4].innerText || '' : '',
-                vatSales: cells[5] ? cells[5].innerText || '' : '',
-                warranty: cells[6] ? cells[6].innerText || '' : '',
-                datePrepared: cells[7] ? cells[7].innerText || '' : '',
-                serialno: cells[8] ? cells[8].innerText || '' : '',
-                category: cells[9] ? cells[9].innerText || '' : '',
-                type: cells[10] ? cells[10].innerText || '' : '',
-                branch: cells[11] ? cells[11].innerText || '' : '',
-                supplier: cells[12] ? cells[12].innerText || '' : '',
-                order_no: document.getElementById("order_no").value,
-                recipient: document.getElementById("recipient").value,
-                sender: document.getElementById("sender").value,
-            };
-            dataArray.push(data);
-            console.log(data);
-        });
-
-        var xhr = new XMLHttpRequest();
-        xhr.open("POST", "./ajax-inventory/submit-btn-order-confirmation.php", true);
-        //xhr.setRequestHeader("Content-Type", "application/json");
-        xhr.onreadystatechange = function() {
-            if (xhr.readyState === XMLHttpRequest.DONE) {
-                if (xhr.status === 200) {
-                    setTimeout(location.reload.bind(location), 3000);
-                    console.log(xhr.responseText);
-                    const Toast = Swal.mixin({
-                        toast: true,
-                        position: 'top-end',
-                        showConfirmButton: false,
-                        timer: 3000,
-                        timerProgressBar: true,
-                        didOpen: (toast) => {
-                            toast.onmouseenter = Swal.stopTimer;
-                            toast.onmouseleave = Swal.resumeTimer;
-                        }
-                    });
-                    Toast.fire({
-                        icon: 'success',
-                        title: 'Added successfully'
-                    });
-                } else {
-                    console.error('Error:', xhr.status, xhr.statusText);
-                    const Toast = Swal.mixin({
-                        toast: true,
-                        position: 'top-end',
-                        showConfirmButton: false,
-                        timer: 3000,
-                        timerProgressBar: true,
-                        didOpen: (toast) => {
-                            toast.onmouseenter = Swal.stopTimer;
-                            toast.onmouseleave = Swal.resumeTimer;
-                        }
-                    });
-                    Toast.fire({
-                        icon: 'error',
-                        title: 'Error inserting data'
-                    });
-                }
-            }
-        };
-
-        cancelProduct();
-
-        var jsonData = JSON.stringify(dataArray);
-        xhr.send(jsonData);
-    }
-
-    document.getElementById("submit-btn").addEventListener("click", saveData);
-</script>
