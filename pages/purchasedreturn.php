@@ -250,14 +250,20 @@
                                         </div>
                                         <div class="form-section mb-2">
                                             <label for="type" class="form-label">Type:</label>
-                                            <select class="form-select" aria-label="type" required name="productType[]" id="type">
-                                                <option value="" selected disabled>Select</option>
+                                             <select class="form-select" name="type" id="type" onchange="LoadCategory(this.value);">
+                                                <option value="" selected>Select</option>
+                                                <option value="With VAT">With VAT</option>
+                                                <option value="Non-VAT">Non-VAT</option>
                                             </select>
                                         </div>
                                         <div class="form-section mb-2">
                                             <label for="category" class="form-label">Category:</label>
-                                            <select id="category" name="category" class="form-select">
-                                                <option value="" selected disabled>Select</option>
+                                            <select class="form-select" aria-label="Category" name="category" id="category" onchange="LoadSerialProduct(this.value);">
+                                                <option value="" selected>Select</option>
+                                                <option value="Battery">Battery</option>
+                                                <option value="Cable">Cable</option>
+                                                <option value="Cartridge">Cartridge</option>
+                                                <option value="Connector">Connector</option>
                                             </select>
                                         </div>
                                     </div>
