@@ -14,7 +14,7 @@ class MYPDF extends TCPDF {
         $img_file = '../../assets/images/cert_bg.jpg';
         $this->Image($img_file, 0, 0, $width, $height, '', '', '', false, 300, '', false, false, 0);
         // centered logo on top
-        $logo = 'C:\\xampp\\htdocs\\isyn-app-v3\\logo\\isynergiesinclogo.png';
+        $logo = 'C:\\xampp\\htdocs\\isyn-app-v3\\logo\\complete-logo.png';
         if (file_exists($logo)) {
             $lw = 70; // mm bigger logo
             $lx = ($this->getPageWidth() - $lw) / 2;
@@ -22,7 +22,7 @@ class MYPDF extends TCPDF {
             $ext = strtolower(pathinfo($logo, PATHINFO_EXTENSION));
             $supportsAlpha = extension_loaded('gd') || class_exists('Imagick');
             if ($ext === 'png' && !$supportsAlpha) {
-                $logoJpg = 'C:\\xampp\\htdocs\\isyn-app-v3\\logo\\isynergiesinclogo.jpg';
+                $logoJpg = 'C:\\xampp\\htdocs\\isyn-app-v3\\logo\\complete-logo.jpg';
                 if (file_exists($logoJpg)) {
                     $this->Image($logoJpg, $lx, $ly, $lw, 0, 'JPG', '', '', false, 300, '', false, false, 0);
                 }
