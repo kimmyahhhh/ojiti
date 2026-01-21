@@ -258,7 +258,7 @@ class Reports extends Database
         // 'STRETCH' - Template stretches to fill page, may distort aspect ratio
         // 'FIT' - Template fits within page, maintains aspect ratio, may have borders
         // 'ORIGINAL' - Template at original size, may be smaller than page
-        $textStartOffset = 82;
+        $textStartOffset = 95;
         
         // FINE-TUNING PARAMETERS - Adjust these for perfect alignment
         $headerSectionOffset = 0; // Additional space after template before header
@@ -371,7 +371,7 @@ class Reports extends Database
         $stmt->close();
 
         // Add centered logo at the very top (with PNG alpha fallback)
-        $logoPath = 'C:\xampp\htdocs\isyn-app-v3\logo\isynergiesinclogo.png';
+        $logoPath = 'C:\xampp\htdocs\isyn-app-v3\logo\complete-logo.png';
         if (file_exists($logoPath)) {
             $logoWidth = 60; // mm
             $logoHeight = 18; // mm fixed height to allow precise address placement
@@ -429,6 +429,11 @@ class Reports extends Database
                 <tr style="font-size:'.$fontSizeHeader.';">
                     <td width="65%" colspan="2">
                         <table border="0" cellpadding="2" style="width:100%;">
+
+
+
+
+                        
                             <tr>
                                 <td width="18%" style="white-space:nowrap; text-align:left;">TO:</td>
                                 <td width="82%" style="border-bottom:1px solid #000; line-height:'.(18 + $toFieldVerticalOffset).'px; white-space:nowrap;">'.$header["NameTO"].'</td>
