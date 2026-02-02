@@ -109,7 +109,7 @@
                                 <div class="mb-2 row">
                                     <div class="col-sm-12 mb-1">
                                         <label for="isCustom">
-                                            <input type="radio" id="isCustom" name="selection" class="form-check-input" value="Yes" onclick="isCustomSelect();"> Custom:
+                                            <input type="radio" id="isCustom" name="selection" class="form-check-input" value="Yes" onclick="isCustomSelect();"> Data Filter:
                                         </label>
                                     </div>
                                     <div class="col-sm-9 mb-1">
@@ -217,7 +217,7 @@
                         <div class=" shadow p-3 rounded-3" style="background-color: white;overflow:auto">
                             <div class="row">
                                 <div class="col-lg-6 col-md-6">
-                                    <p class="fw-medium fs-5" style="color: #090909;">Particulars</p>
+                                    <p class="fw-medium fs-5" style="color: #090909;">Data Inventory</p>
                                 </div>
                                 <div class="col-lg-6 col-md-6 d-flex justify-content-end">
                                     <button type="button" id="print" name="print" class="btn btn-primary" onclick="PrintInventoryReportDB();"><i class="fa fa-print"></i> Print</button>
