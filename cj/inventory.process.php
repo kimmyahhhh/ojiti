@@ -606,6 +606,7 @@ class Process extends Database
         $customValue = $data['customValue'];
         $fromdate = $data['fromdate'];
         $todate = $data['todate'];
+        $postedRows = isset($data['DATA']) ? json_decode($data['DATA']) : null;
         $inventoryReport = [];
         $type = "";
         $column = "";
@@ -628,7 +629,7 @@ class Process extends Database
             $qry = " BRANCH='" . $isynbranch . "' AND ";
             $branchName = strtoupper($isynbranch);
         }
-        if ($type == "CURRENT INVENTORY" || $type == "ENDING INVENTORY" || $type == "PREVIOUS INVENTORY") {
+        if (!$postedRows && ($type == "CURRENT INVENTORY" || $type == "ENDING INVENTORY" || $type == "PREVIOUS INVENTORY")) {
             if ($onlyconsign != "Yes") {
                 switch ($type){
                     case 'CURRENT INVENTORY':
@@ -638,11 +639,15 @@ class Process extends Database
                         if ($nofreebies == "Yes") { $filters[] = "CATEGORY <> 'FREEBIES'"; }
                         if ($onlyfreebies == "Yes") { $filters[] = "CATEGORY = 'FREEBIES'"; }
                         if ($fromdate != "" && $todate != "") {
-                            $filters[] = "STR_TO_DATE(DateAdded, '%m/%d/%Y') >= STR_TO_DATE('".$fromdate."', '%m/%d/%Y')";
-                            $filters[] = "STR_TO_DATE(DateAdded, '%m/%d/%Y') <= STR_TO_DATE('".$todate."', '%m/%d/%Y')";
+                            if ($fromdate === $todate) {
+                                $filters[] = "STR_TO_DATE(DateAdded, '%m/%d/%Y') = STR_TO_DATE('".$fromdate."', '%m/%d/%Y')";
+                            } else {
+                                $filters[] = "STR_TO_DATE(DateAdded, '%m/%d/%Y') >= STR_TO_DATE('".$fromdate."', '%m/%d/%Y')";
+                                $filters[] = "STR_TO_DATE(DateAdded, '%m/%d/%Y') <= STR_TO_DATE('".$todate."', '%m/%d/%Y')";
+                            }
                         }
                         $where = count($filters) ? (" WHERE " . implode(" AND ", $filters)) : "";
-                        $stmt = $this->conn->prepare("SELECT * FROM ".$mytable.$where." ORDER BY category,product LIMIT 2000");
+                        $stmt = $this->conn->prepare("SELECT * FROM ".$mytable.$where." ORDER BY category,product");
                         $stmt->execute();
                         $res = $stmt->get_result();
                         if ($res->num_rows > 0) { while ($row = $res->fetch_assoc()) { $inventoryReport[] = $row; } }
@@ -656,14 +661,18 @@ class Process extends Database
                             $f = " BRANCH='" . $isynbranch . "' AND ";
                         }
                         $dateCol = $this->findFirstColumn($mytable, ['DatePurchase','DatePurchased','datepurchased','AsOf','asof']);
-                        if ($fromdate != "" && $todate != "" && $fromdate != $todate && $dateCol) {
-                            $q = "SELECT * FROM ".$mytable." WHERE ".$f." STR_TO_DATE(".$dateCol.", '%m/%d/%Y') >= STR_TO_DATE('".$fromdate."', '%m/%d/%Y') AND STR_TO_DATE(".$dateCol.", '%m/%d/%Y') <= STR_TO_DATE('".$todate."', '%m/%d/%Y')";
+                        if ($fromdate != "" && $todate != "" && $dateCol) {
+                            if ($fromdate === $todate) {
+                                $q = "SELECT * FROM ".$mytable." WHERE ".$f." STR_TO_DATE(".$dateCol.", '%m/%d/%Y') = STR_TO_DATE('".$fromdate."', '%m/%d/%Y')";
+                            } else {
+                                $q = "SELECT * FROM ".$mytable." WHERE ".$f." STR_TO_DATE(".$dateCol.", '%m/%d/%Y') >= STR_TO_DATE('".$fromdate."', '%m/%d/%Y') AND STR_TO_DATE(".$dateCol.", '%m/%d/%Y') <= STR_TO_DATE('".$todate."', '%m/%d/%Y')";
+                            }
                         } else {
                             $q = "SELECT * FROM ".$mytable." WHERE ".$f." 1=1";
                         }
                         if ($nofreebies == "Yes") { $q .= " AND CATEGORY <> 'FREEBIES'"; }
                         if ($onlyfreebies == "Yes") { $q .= " AND CATEGORY = 'FREEBIES'"; }
-                        $stmt = $this->conn->prepare($q." LIMIT 2000");
+                        $stmt = $this->conn->prepare($q);
                         $stmt->execute();
                         $res = $stmt->get_result();
                         if ($res->num_rows > 0) { while ($row = $res->fetch_assoc()) { $inventoryReport[] = $row; } }
@@ -673,12 +682,16 @@ class Process extends Database
                         $mytable = "tbl_inventorychecking";
                         if ($isynbranch == "OVERALL") { $f = " "; } else { $f = " BRANCH='" . $isynbranch . "' AND "; }
                         $dateColPrev = $this->findFirstColumn($mytable, ['DatePurchase','DatePurchased','datepurchased','AsOf','asof']);
-                        if ($fromdate != "" && $todate != "" && $fromdate != $todate && $dateColPrev) {
-                            $q = "SELECT * FROM ".$mytable." WHERE ".$f." STR_TO_DATE(".$dateColPrev.", '%m/%d/%Y') >= STR_TO_DATE('".$fromdate."', '%m/%d/%Y') AND STR_TO_DATE(".$dateColPrev.", '%m/%d/%Y') <= STR_TO_DATE('".$todate."', '%m/%d/%Y')";
+                        if ($fromdate != "" && $todate != "" && $dateColPrev) {
+                            if ($fromdate === $todate) {
+                                $q = "SELECT * FROM ".$mytable." WHERE ".$f." STR_TO_DATE(".$dateColPrev.", '%m/%d/%Y') = STR_TO_DATE('".$fromdate."', '%m/%d/%Y')";
+                            } else {
+                                $q = "SELECT * FROM ".$mytable." WHERE ".$f." STR_TO_DATE(".$dateColPrev.", '%m/%d/%Y') >= STR_TO_DATE('".$fromdate."', '%m/%d/%Y') AND STR_TO_DATE(".$dateColPrev.", '%m/%d/%Y') <= STR_TO_DATE('".$todate."', '%m/%d/%Y')";
+                            }
                         } else {
                             $q = "SELECT * FROM ".$mytable." WHERE ".$f." 1=1";
                         }
-                        $stmt = $this->conn->prepare($q." LIMIT 2000");
+                        $stmt = $this->conn->prepare($q);
                         $stmt->execute();
                         $res = $stmt->get_result();
                         if ($res->num_rows > 0) { while ($row = $res->fetch_assoc()) { $inventoryReport[] = $row; } }
@@ -687,25 +700,29 @@ class Process extends Database
                 }
             }
         }
-        if ($type == "INCOMING INVENTORY") {
+        if (!$postedRows && $type == "INCOMING INVENTORY") {
             $mytable = "tbl_inventoryin";
             $conditions = [];
             if ($isynbranch != "OVERALL") { $conditions[] = " Branch='" . $isynbranch . "'"; }
             if ($nofreebies == "Yes") { $conditions[] = " CATEGORY <> 'FREEBIES'"; }
             if ($onlyfreebies == "Yes") { $conditions[] = " CATEGORY = 'FREEBIES'"; }
             if ($fromdate != "" && $todate != "") {
-                $conditions[] = "STR_TO_DATE(dateadded, '%m/%d/%Y') >= STR_TO_DATE('".$fromdate."', '%m/%d/%Y')";
-                $conditions[] = "STR_TO_DATE(dateadded, '%m/%d/%Y') <= STR_TO_DATE('".$todate."', '%m/%d/%Y')";
+                if ($fromdate === $todate) {
+                    $conditions[] = "STR_TO_DATE(dateadded, '%m/%d/%Y') = STR_TO_DATE('".$fromdate."', '%m/%d/%Y')";
+                } else {
+                    $conditions[] = "STR_TO_DATE(dateadded, '%m/%d/%Y') >= STR_TO_DATE('".$fromdate."', '%m/%d/%Y')";
+                    $conditions[] = "STR_TO_DATE(dateadded, '%m/%d/%Y') <= STR_TO_DATE('".$todate."', '%m/%d/%Y')";
+                }
             }
             $where = count($conditions) ? (" WHERE " . implode(" AND ", $conditions)) : "";
-            $q = "SELECT * FROM ".$mytable.$where." ORDER BY product, category LIMIT 2000";
+            $q = "SELECT * FROM ".$mytable.$where." ORDER BY product, category";
             $stmt = $this->conn->prepare($q);
             $stmt->execute();
             $res = $stmt->get_result();
             if ($res->num_rows > 0) { while ($row = $res->fetch_assoc()) { $inventoryReport[] = $row; } }
             $stmt->close();
         }
-        if ($type == "OUTGOING INVENTORY") {
+        if (!$postedRows && $type == "OUTGOING INVENTORY") {
             $f = "";
             if ($onlyconsign == "Yes") {
                 if ($isynbranch == "OVERALL") {
@@ -721,18 +738,22 @@ class Process extends Database
             if ($nofreebies == "Yes") { $q .= " CATEGORY <> 'FREEBIES' AND "; }
             if ($onlyfreebies == "Yes") { $q .= " CATEGORY = 'FREEBIES' AND "; }
             if ($fromdate != "" && $todate != "") {
-                $q .= "STR_TO_DATE(DateAdded, '%m/%d/%Y') >= STR_TO_DATE('".$fromdate."', '%m/%d/%Y') AND STR_TO_DATE(DateAdded, '%m/%d/%Y') <= STR_TO_DATE('".$todate."', '%m/%d/%Y') ";
+                if ($fromdate === $todate) {
+                    $q .= "STR_TO_DATE(DateAdded, '%m/%d/%Y') = STR_TO_DATE('".$fromdate."', '%m/%d/%Y') ";
+                } else {
+                    $q .= "STR_TO_DATE(DateAdded, '%m/%d/%Y') >= STR_TO_DATE('".$fromdate."', '%m/%d/%Y') AND STR_TO_DATE(DateAdded, '%m/%d/%Y') <= STR_TO_DATE('".$todate."', '%m/%d/%Y') ";
+                }
             } else {
                 $q .= " 1=1 ";
             }
-            $q .= " ORDER BY si, product ASC LIMIT 2000";
+            $q .= " ORDER BY si, product ASC";
             $stmt = $this->conn->prepare($q);
             $stmt->execute();
             $res = $stmt->get_result();
             if ($res->num_rows > 0) { while ($row = $res->fetch_assoc()) { $inventoryReport[] = $row; } }
             $stmt->close();
         }
-        if ($type == "CUSTOM") {
+        if (!$postedRows && $type == "CUSTOM") {
             if ($tableCustomVal != "" && $customColumn != "") {
                 $where = [];
                 if (!($isynbranch == "" || strtoupper($isynbranch) == "OVERALL")) {
@@ -742,7 +763,7 @@ class Process extends Database
                 if ($customValue !== "") {
                     $where[] = $customColumn . " = '" . $customValue . "'";
                 }
-                $q = "SELECT * FROM " . $tableCustomVal . (count($where) ? (" WHERE " . implode(" AND ", $where)) : "") . " LIMIT 2000";
+                $q = "SELECT * FROM " . $tableCustomVal . (count($where) ? (" WHERE " . implode(" AND ", $where)) : "");
                 $stmt = $this->conn->prepare($q);
                 $stmt->execute();
                 $res = $stmt->get_result();
@@ -750,23 +771,79 @@ class Process extends Database
                 $stmt->close();
             }
         }
+        // Normalize header to include important columns when present in data (only when building from DB)
+        if (!$postedRows) {
+        $hdrNames = [];
+        $normalized = function($s){ return strtolower(trim($s)); };
+        if (is_array($headerData)) {
+            foreach ($headerData as $col) {
+                $name = is_array($col) ? ($col['ColumnName'] ?? '') : (isset($col->ColumnName) ? $col->ColumnName : '');
+                if ($name !== '') { $hdrNames[] = $normalized($name); }
+            }
+        }
+        $hasColumnInRows = function($rows, $candidates) use ($normalized) {
+            foreach ($rows as $r) {
+                foreach ($candidates as $c) {
+                    foreach ($r as $k => $v) {
+                        if ($normalized($k) === $normalized($c)) { return true; }
+                    }
+                }
+            }
+            return false;
+        };
+        $ensureHeader = function(&$headerData, $name){
+            $headerData[] = ['ColumnName' => $name];
+        };
+        if (!in_array('quantity', $hdrNames, true) && $hasColumnInRows($inventoryReport, ['Quantity','qty'])) {
+            $ensureHeader($headerData, 'Quantity');
+        }
+        if (!in_array('sino', $hdrNames, true) && $hasColumnInRows($inventoryReport, ['SIno','SI','SupplierSI'])) {
+            // prefer SI if present, else SIno, else SupplierSI
+            if ($hasColumnInRows($inventoryReport, ['SI'])) { $ensureHeader($headerData, 'SI'); }
+            elseif ($hasColumnInRows($inventoryReport, ['SIno'])) { $ensureHeader($headerData, 'SIno'); }
+            else { $ensureHeader($headerData, 'SupplierSI'); }
+        }
+        // Reorder header to preferred print sequence
+        $preferred = ['SIno','SI','Serialno','Product','Supplier','Stock','Branch','Category','Quantity','DateAdded','SRP','Vat','VatSales'];
+        $mapIdx = [];
+        $finalHdr = [];
+        foreach ($headerData as $idx => $col) {
+            $nm = is_array($col) ? ($col['ColumnName'] ?? '') : (isset($col->ColumnName) ? $col->ColumnName : '');
+            if ($nm !== '') { $mapIdx[strtolower($nm)] = $idx; }
+        }
+        foreach ($preferred as $p) {
+            $lk = strtolower($p);
+            if (isset($mapIdx[$lk])) { $finalHdr[] = $headerData[$mapIdx[$lk]]; unset($mapIdx[$lk]); }
+        }
+        foreach ($headerData as $idx => $col) {
+            $nm = is_array($col) ? ($col['ColumnName'] ?? '') : (isset($col->ColumnName) ? $col->ColumnName : '');
+            if ($nm !== '' && !in_array(strtolower($nm), array_map('strtolower',$preferred), true)) { $finalHdr[] = $col; }
+        }
+        $headerData = $finalHdr;
+        }
+        
         unset($_SESSION['headerData']);
         unset($_SESSION['tableData']);
         unset($_SESSION['isynbranch']);
         unset($_SESSION['reportType']);
         $_SESSION['headerData'] = $headerData;
-        $printRows = [];
-        foreach ($inventoryReport as $r) {
-            $vals = [];
-            foreach ($headerData as $col) {
-                $colName = is_array($col) ? ($col['ColumnName'] ?? '') : $col->ColumnName;
-                $vals[] = isset($r[$colName]) ? $r[$colName] : '';
+        if ($postedRows && is_array($postedRows) && count($postedRows) > 0) {
+            $_SESSION['tableData'] = $postedRows;
+        } else {
+            $printRows = [];
+            foreach ($inventoryReport as $r) {
+                $vals = [];
+                foreach ($headerData as $col) {
+                    $colName = is_array($col) ? ($col['ColumnName'] ?? '') : $col->ColumnName;
+                    $vals[] = isset($r[$colName]) ? $r[$colName] : '';
+                }
+                $printRows[] = $vals;
             }
-            $printRows[] = $vals;
+            $_SESSION['tableData'] = $printRows;
         }
-        $_SESSION['tableData'] = $printRows;
         $_SESSION['isynbranch'] = $isynbranch;
         $_SESSION['reportType'] = $type;
+        $_SESSION['use_ui_order'] = ($postedRows && is_array($postedRows) && count($postedRows) > 0);
 
         $transferProdRpt = [];
         if ($inctranferprod == "Yes" && $type == "INCOMING INVENTORY") {           
@@ -794,30 +871,9 @@ class Process extends Database
         ));
     }
 
-    private function SelectQuery($string){
-        $data = [];
-        $stmt = $this->conn->prepare($string);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $stmt->close();
-        while ($row = $result->fetch_assoc()) {
-            $data[] = $row;
-        }
-        return $data;
-    }
     
-    private function tableExists($name){
-        $exists = false;
-        $stmt = $this->conn->prepare("SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ?");
-        if ($stmt) {
-            $stmt->bind_param('s', $name);
-            $stmt->execute();
-            $res = $stmt->get_result();
-            if ($res && $res->num_rows > 0) { $exists = true; }
-            $stmt->close();
-        }
-        return $exists;
-    }
+    
+    
     
     private function columnExists($table, $column){
         $exists = false;
