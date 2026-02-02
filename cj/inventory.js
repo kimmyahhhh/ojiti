@@ -107,6 +107,7 @@ function Initialize(){
                 timepicker: false,
                 datepicker: true,
                 startDate: false,
+                maxDate: new Date(),
                 closeOnDateSelect: false,
                 closeOnTimeSelect: true,
                 closeOnWithoutClick: true,
@@ -118,6 +119,21 @@ function Initialize(){
             $('.Date').datetimepicker(options);
             $('#fromDate').val('');
             $('#toDate').val('');
+            $('.Date').on('blur', function(){
+                var val = $(this).val();
+                if (!val) return;
+                var parts = val.split('/');
+                if (parts.length === 3) {
+                    var m = parseInt(parts[0],10), d = parseInt(parts[1],10), y = parseInt(parts[2],10);
+                    var inputDate = new Date(y, m-1, d);
+                    var today = new Date();
+                    today.setHours(0,0,0,0);
+                    if (inputDate > today) {
+                        Swal.fire({icon:'warning',title:'Invalid date',text:'Future dates are not allowed'});
+                        $(this).val('');
+                    }
+                }
+            });
         }, 
         error:function(xhr,status,error){
             Swal.fire({icon:'error',title:'Initialize failed',text:(xhr && xhr.responseText) ? xhr.responseText : (error || status)});
@@ -134,8 +150,7 @@ function InitiateTable(){
         searching:true,
         ordering:false,
         info:true,
-        paging:true,
-        pageLength:50,
+        paging:false,
         lengthChange:false,
         deferRender:true,
         processing:true,
@@ -202,6 +217,25 @@ function BuildReportTable(listViewName,ListName){
                         existLC.unshift(String(set[0]).toLowerCase());
                     }
                 }
+
+                var preferred = ["SIno","Serialno","Product","Supplier","Stock","Branch","Category","Quantity","DateAdded","SRP","Vat","VatSales"];
+                var mapIndex = {};
+                for (var i=0;i<headerData.length;i++){
+                    var lc = String(headerData[i].ColumnName).toLowerCase();
+                    mapIndex[lc] = i;
+                }
+                var ordered = [];
+                for (var i=0;i<preferred.length;i++){
+                    var idx = mapIndex[String(preferred[i]).toLowerCase()];
+                    if (idx !== undefined) { ordered.push(headerData[idx]); }
+                }
+                for (var i=0;i<headerData.length;i++){
+                    var lc = String(headerData[i].ColumnName).toLowerCase();
+                    if (preferred.map(function(x){return String(x).toLowerCase();}).indexOf(lc) === -1) {
+                        ordered.push(headerData[i]);
+                    }
+                }
+                headerData = ordered;
 
             var headerRow = "";
             for (var i = 0; i < headerData.length; i++) { 
@@ -427,6 +461,22 @@ function SearchBtn(){
 
     var fromdate = $('#fromDate').val();
     var todate = $('#toDate').val();
+    (function enforceNoFuture(){
+        function clamp(val){ 
+            if (!val) return '';
+            var p = val.split('/'); 
+            if (p.length!==3) return val;
+            var m = parseInt(p[0],10), d = parseInt(p[1],10), y = parseInt(p[2],10);
+            var dt = new Date(y, m-1, d);
+            var today = new Date(); today.setHours(0,0,0,0);
+            if (dt > today) return '';
+            return val;
+        }
+        fromdate = clamp(fromdate);
+        todate = clamp(todate);
+        $('#fromDate').val(fromdate);
+        $('#toDate').val(todate);
+    })();
 
     if (isynBranch == "" || isynBranch == null) {
         isynBranch = "OVERALL";
@@ -473,15 +523,26 @@ function SearchBtn(){
                         if (v !== '' && v !== null && v !== undefined) { hasData = true; break; }
                     }
                 }
+                if (String(cname).toLowerCase() === 'datepurchase') { hasData = true; }
                 if (hasData) { prunedCols.push(cname); seen[key] = true; }
             }
             // If pruning changes header, rewrite the header before rendering
             if (prunedCols.length > 0) {
+                var preferred = ["SIno","SI","Serialno","Product","Supplier","Stock","Branch","Category","Quantity","DateAdded","DatePurchase","SRP","Vat","VatSales"];
+                var lowerPref = preferred.map(function(x){ return String(x).toLowerCase(); });
+                var indexMap = {};
+                for (var i=0;i<prunedCols.length;i++){ indexMap[String(prunedCols[i]).toLowerCase()] = prunedCols[i]; }
+                var orderedCols = [];
+                for (var i=0;i<lowerPref.length;i++){
+                    var key = lowerPref[i];
+                    if (indexMap[key] !== undefined) { orderedCols.push(indexMap[key]); delete indexMap[key]; }
+                }
+                for (var k in indexMap){ if (Object.prototype.hasOwnProperty.call(indexMap,k)) { orderedCols.push(indexMap[k]); } }
                 var headerRow = "<tr>";
-                for (var i=0;i<prunedCols.length;i++){ headerRow += "<th>"+prunedCols[i]+"</th>"; }
+                for (var i=0;i<orderedCols.length;i++){ headerRow += "<th>"+orderedCols[i]+"</th>"; }
                 headerRow += "</tr>";
                 $("#particularsTbl thead").html(headerRow);
-                colNames = prunedCols;
+                colNames = orderedCols;
             }
 
             if (sTableName == "tbl_invlist" || sTableName == "tbl_inventorychecking" || reportType == "CURRENT INVENTORY" || reportType == "PREVIOUS INVENTORY" || reportType == "ENDING INVENTORY" || reportType == "INCOMING INVENTORY"){
@@ -580,10 +641,17 @@ function PrintInventoryReport(){
         return;
     } else {
         var isynBranch = $('#isynBranch').val();
-        let Data = particularsTbl.rows().data().toArray();
+        var prevLen = particularsTbl.page.len();
+        var prevPage = particularsTbl.page();
+        particularsTbl.page.len(-1).draw();
+        let Data = particularsTbl.rows({search:'applied'}).data().toArray();
+        particularsTbl.page.len(prevLen).draw(false);
+        particularsTbl.page(prevPage).draw(false);
+        var visibleHeader = [];
+        $('#particularsTbl thead th').each(function(){ visibleHeader.push({ ColumnName: $(this).text() }); });
         let formdata = new FormData();
         formdata.append("action","GenerateInventoryReport");
-        formdata.append("HEADERDATA",JSON.stringify(headerData));
+        formdata.append("HEADERDATA",JSON.stringify(visibleHeader.length ? visibleHeader : headerData));
         formdata.append("DATA",JSON.stringify(Data));
         formdata.append("ISYNBRANCH",isynBranch);
         formdata.append("REPORTTYPE",reportType);
@@ -674,9 +742,17 @@ function PrintInventoryReportDB(){
     var customValue = $('#customValues').val();
     var fromdate = $('#fromDate').val();
     var todate = $('#toDate').val();
+    var prevLen = particularsTbl.page.len();
+    var prevPage = particularsTbl.page();
+    particularsTbl.page.len(-1).draw();
+    var Data = particularsTbl.rows({search:'applied'}).data().toArray();
+    particularsTbl.page.len(prevLen).draw(false);
+    particularsTbl.page(prevPage).draw(false);
+    var visibleHeader = [];
+    $('#particularsTbl thead th').each(function(){ visibleHeader.push({ ColumnName: $(this).text() }); });
     let formdata = new FormData();
     formdata.append("action","GenerateInventoryReport");
-    formdata.append("HEADERDATA",JSON.stringify(headerData));
+    formdata.append("HEADERDATA",JSON.stringify(visibleHeader.length ? visibleHeader : headerData));
     formdata.append("ISYNBRANCH",isynBranch);
     formdata.append("REPORTTYPE",reportType);
     formdata.append("ispreset",ispreset);
@@ -694,6 +770,7 @@ function PrintInventoryReportDB(){
     formdata.append("customValue",customValue);
     formdata.append("fromdate",fromdate);
     formdata.append("todate",todate);
+    formdata.append("DATA",JSON.stringify(Data));
     $.ajax({
         url: "../../routes/inventorymanagement/inventory.route.php",
         type: "POST",
