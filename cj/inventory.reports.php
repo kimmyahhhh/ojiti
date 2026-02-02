@@ -17,7 +17,7 @@ class Reports extends Database
         $pdf->SetPrintHeader(false);
         $pdf->SetPrintFooter(false);
 		$pdf->SetDefaultMonospacedFont(PDF_FONT_MONOSPACED);
-		$pdf->SetMargins(4, 8, 4);
+		$pdf->SetMargins(8, 8, 8);
 		$pdf->SetAutoPageBreak(TRUE, PDF_MARGIN_BOTTOM);
 		$pdf->setImageScale(PDF_IMAGE_SCALE_RATIO);
 		if (@file_exists(dirname(__FILE__).'/lang/eng.php')) {
@@ -61,6 +61,7 @@ class Reports extends Database
         $branchsetup->close();
 
         // Clean header: remove duplicates and columns with no data
+        $useUiOrder = isset($_SESSION['use_ui_order']) && $_SESSION['use_ui_order'];
         $rawHeaders = [];
         foreach ($headerData as $h) {
             $rawHeaders[] = is_array($h) ? ($h['ColumnName'] ?? '') : $h->ColumnName;
@@ -73,11 +74,13 @@ class Reports extends Database
         $alias = function($s) use ($normalize){
             $n = $normalize($s);
             $map = [
-                'si' => ['si','sino'],
+                'si' => ['si','sino','suppliersi','supplier si','supplier_si'],
                 'serialno' => ['serialno','serialnumber','serialno','serialno'],
                 'dateadded' => ['dateadded','dateadded','dateadded','dateadded'],
                 'datepurchase' => ['datepurchase','purchasedate','datepurchased'],
                 'product' => ['product','productname'],
+                'quantity' => ['quantity','qty'],
+                'vatsales' => ['vatsales','vatablesales','vat sales','vatable sales'],
                 'vat' => ['vat','vats'],
             ];
             foreach ($map as $canon => $alts) {
@@ -85,31 +88,110 @@ class Reports extends Database
             }
             return $n;
         };
-        $keepIdx = [];
-        $seenCanon = [];
-        for ($i = 0; $i < count($rawHeaders); $i++) {
-            $name = $rawHeaders[$i];
-            if ($name === '') continue;
-            $canon = $alias($name);
-            // has data?
-            $hasData = false;
-            foreach ($tableData as $row) {
-                $v = isset($row[$i]) ? $row[$i] : '';
-                if ($v !== '' && $v !== null) { $hasData = true; break; }
+        if ($useUiOrder) {
+            $cleanHeaders = $rawHeaders;
+            $cleanRows = $tableData;
+        } else {
+            $keepIdx = [];
+            $seenCanon = [];
+            for ($i = 0; $i < count($rawHeaders); $i++) {
+                $name = $rawHeaders[$i];
+                if ($name === '') continue;
+                $canon = $alias($name);
+                // has data?
+                $hasData = false;
+                foreach ($tableData as $row) {
+                    $v = isset($row[$i]) ? $row[$i] : '';
+                    if ($v !== '' && $v !== null) { $hasData = true; break; }
+                }
+                if (!$hasData) continue;
+                if (isset($seenCanon[$canon])) continue;
+                $seenCanon[$canon] = true;
+                $keepIdx[] = $i;
             }
-            if (!$hasData) continue;
-            if (isset($seenCanon[$canon])) continue;
-            $seenCanon[$canon] = true;
-            $keepIdx[] = $i;
+            // Build cleaned header and rows
+            $cleanHeaders = [];
+            foreach ($keepIdx as $idx) { $cleanHeaders[] = $rawHeaders[$idx]; }
+            $cleanRows = [];
+            foreach ($tableData as $row) {
+                $new = [];
+                foreach ($keepIdx as $idx) { $new[] = isset($row[$idx]) ? $row[$idx] : ''; }
+                $cleanRows[] = $new;
+            }
         }
-        // Build cleaned header and rows
-        $cleanHeaders = [];
-        foreach ($keepIdx as $idx) { $cleanHeaders[] = $rawHeaders[$idx]; }
-        $cleanRows = [];
-        foreach ($tableData as $row) {
-            $new = [];
-            foreach ($keepIdx as $idx) { $new[] = isset($row[$idx]) ? $row[$idx] : ''; }
-            $cleanRows[] = $new;
+        if ($useUiOrder) {
+            $orderIdx = range(0, count($cleanHeaders)-1);
+        } else {
+            // Reorder to fixed preferred sequence for print
+            $preferredOrder = ['sino','serialno','product','supplier','stock','branch','category','quantity','dateadded','srp','vat','vatsales'];
+            $preferredIdx = [];
+            $remainingIdx = [];
+            for ($i = 0; $i < count($cleanHeaders); $i++) {
+                $canon = $alias($cleanHeaders[$i]);
+                if (in_array($canon, $preferredOrder, true)) {
+                    $preferredIdx[$canon] = $i;
+                } else {
+                    $remainingIdx[] = $i;
+                }
+            }
+            // Choose SI index by header name priority: SI > SIno > SupplierSI
+            $siIdx = null;
+            for ($i = 0; $i < count($cleanHeaders); $i++) {
+                $hn = strtolower($cleanHeaders[$i]);
+                if ($siIdx === null && ($hn === 'si')) { $siIdx = $i; }
+            }
+            if ($siIdx === null) {
+                for ($i = 0; $i < count($cleanHeaders); $i++) {
+                    $hn = strtolower($cleanHeaders[$i]);
+                    if ($hn === 'sino') { $siIdx = $i; break; }
+                }
+            }
+            if ($siIdx === null) {
+                for ($i = 0; $i < count($cleanHeaders); $i++) {
+                    $hn = strtolower($cleanHeaders[$i]);
+                    if ($hn === 'suppliersi' || $hn === 'supplier si' || $hn === 'supplier_si') { $siIdx = $i; break; }
+                }
+            }
+            $orderedPreferred = [];
+            if ($siIdx !== null) { $orderedPreferred[] = $siIdx; }
+            foreach (['serialno','product','supplier','stock','branch','category','dateadded','srp','vat','vatsales'] as $p) {
+                if (isset($preferredIdx[$p])) { $orderedPreferred[] = $preferredIdx[$p]; }
+            }
+            $orderIdx = array_merge($orderedPreferred, $remainingIdx);
+        }
+        $reorderedHeaders = [];
+        $reorderedRows = [];
+        foreach ($orderIdx as $oi) { $reorderedHeaders[] = $cleanHeaders[$oi]; }
+        foreach ($cleanRows as $row) {
+            $nr = [];
+            foreach ($orderIdx as $oi) { $nr[] = isset($row[$oi]) ? $row[$oi] : ''; }
+            $reorderedRows[] = $nr;
+        }
+        $cleanHeaders = $reorderedHeaders;
+        $cleanRows = $reorderedRows;
+        // Ensure SI appears only once (skip if using UI order assuming it is already correct)
+        if (!$useUiOrder) {
+            $indicesToKeep = [];
+            $seenSi = false;
+            for ($i = 0; $i < count($cleanHeaders); $i++) {
+                $canon = $alias($cleanHeaders[$i]);
+                if ($canon === 'si') {
+                    if ($seenSi) { continue; }
+                    $seenSi = true;
+                }
+                $indicesToKeep[] = $i;
+            }
+            if (count($indicesToKeep) !== count($cleanHeaders)) {
+                $tmpH = []; $tmpR = [];
+                foreach ($indicesToKeep as $ix) { $tmpH[] = $cleanHeaders[$ix]; }
+                foreach ($cleanRows as $row) {
+                    $nr = [];
+                    foreach ($indicesToKeep as $ix) { $nr[] = isset($row[$ix]) ? $row[$ix] : ''; }
+                    $tmpR[] = $nr;
+                }
+                $cleanHeaders = $tmpH;
+                $cleanRows = $tmpR;
+            }
         }
         $colCount = count($cleanHeaders);
         if ($colCount === 0) { $cleanHeaders = []; $cleanRows = []; }
@@ -120,8 +202,9 @@ class Reports extends Database
             for ($i=0;$i<$colCount;$i++){ $columnWidths[$i] = $base; }
             for ($i=0;$i<$colCount;$i++){
                 $hn = strtolower($cleanHeaders[$i]);
-                if (strpos($hn,'product') !== false) { $columnWidths[$i] += 6; }
-                if (strpos($hn,'supplier') !== false) { $columnWidths[$i] += 4; }
+                if (strpos($hn,'product') !== false) { $columnWidths[$i] += 8; }
+                if (strpos($hn,'supplier') !== false) { $columnWidths[$i] += 6; }
+                if (strpos($hn,'sold') !== false) { $columnWidths[$i] += 6; }
                 if (strpos($hn,'serial') !== false) { $columnWidths[$i] += 2; }
             }
             // normalize widths sum to ~100
@@ -135,7 +218,7 @@ class Reports extends Database
 
 
         $contentheader .= '
-                <tr style="font-weight:bold;font-size:6pt;text-align:center;line-height:30px;">
+                <tr style="font-weight:bold;font-size:11pt;text-align:center;line-height:30px;">
             ';
 
         foreach ($cleanHeaders as $index => $headerName){
@@ -149,14 +232,51 @@ class Reports extends Database
                 </tr>
             ';
 
+        $dateCanon = ['dateadded','datepurchase','date','asof'];
         foreach ($cleanRows as $row){
-            $contentdata .= '<tr style="font-size:8pt;">';
+            $contentdata .= '<tr style="font-size:9pt;">';
             for ($i = 0; $i < $colCount; $i++) {
                 $value = isset($row[$i]) ? $row[$i] : '';
+                $hn = strtolower($cleanHeaders[$i]);
+                $canon = $alias($cleanHeaders[$i]);
+                // Normalize dates
+                if (in_array($canon, $dateCanon, true) || strpos($hn,'date') !== false) {
+                    $v = trim((string)$value);
+                    if ($v === '0' || $v === '') {
+                        $value = '';
+                    } else {
+                        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $v)) {
+                            $value = date('m/d/Y', strtotime($v));
+                        } else {
+                            $ts = strtotime($v);
+                            $value = $ts ? date('m/d/Y', $ts) : $v;
+                        }
+                    }
+                }
+                // Format numerics
+                $numRaw = str_replace([',',' '],'', (string)$value);
+                $isNumeric = is_numeric($numRaw);
+                $isSi = ($canon === 'si');
+                if ($isNumeric && !$isSi) {
+                    $isMoney = in_array($canon, ['dealerprice','totalprice','srp','totalsrp','vatsales','vat','amountdue','markup','totalmarkup','mpi'], true) ||
+                               strpos($hn,'price') !== false ||
+                               strpos($hn,'srp') !== false ||
+                               strpos($hn,'vat') !== false ||
+                               strpos($hn,'amount') !== false ||
+                               strpos($hn,'markup') !== false ||
+                               strpos($hn,'mpi') !== false;
+                    $isQty = (strpos($hn,'quantity') !== false || strpos($hn,'qty') !== false);
+                    $valNum = (float)$numRaw;
+                    if ($isMoney) {
+                        $value = number_format($valNum, 2);
+                    } elseif ($isQty) {
+                        $value = number_format($valNum, 0);
+                    } else {
+                        $value = number_format($valNum, 2);
+                    }
+                }
                 $width = isset($columnWidths[$i]) ? $columnWidths[$i] : 5;
-                $num = preg_replace('/[,\s]/','',$value);
-                $align = is_numeric($num) ? 'right' : 'left';
-                $contentdata .= '<td style="text-align:'.$align.';border: 1px solid black;" width="'.$width.'%">'.$value.'</td>';
+                $contentdata .= '<td style="text-align:center;border: 1px solid black;word-wrap:break-word;white-space:normal;" width="'.$width.'%">'.$value.'</td>';
             }
             $contentdata .= '</tr>';
         }
@@ -165,14 +285,13 @@ class Reports extends Database
 
         $content .= '<table border="0">
                         <tr>
-                            <td width="2%"></td>
-                            <td width="98%" style="font-size:8  pt;font-weight:bold;text-align:left;"><p>We make IT possible</p></td>
+                            <td width="100%" style="font-size:8pt;font-weight:bold;text-align:left;"><p>We make IT possible</p></td>
                         </tr>
                         <tr>
                             <td width="100%" style="font-family:centurynormal;font-size:20pt;font-weight:bold;text-align:left;"><p>iSynergies Inc.</p></td>
                         </tr>
                         <tr>
-                            <td width="100%"><p style="font-size:8pt;text-align:left;">'.$orgaddress.'</p></td>
+                            <td width="100%"><p style="font-size:10pt;text-align:left;">'.$orgaddress.'</p></td>
                         </tr>
                         <tr><td></td></tr>
                         <tr>
