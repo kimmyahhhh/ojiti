@@ -1,70 +1,75 @@
-$(document).ready(function() { 
-    console.log('purchasedreturned_maintenance.js loaded');
+<?php
+// Disable error reporting to output for JSON responses
+error_reporting(E_ALL);
+ini_set('display_errors', 0);
+header('Content-Type: application/json');
+session_start();
 
-    // TEMPORARY: Disable Select2 initialization to verify data loading
-    /*
-    if ($.fn.select2) {
-        $('#category').select2({
-            width: '100%',
-            placeholder: 'Select Category'
-        });
+include('../../../database/connection.php');
+$db = new Database();
+$conn = $db->conn;
+
+// Get the raw POST data
+$json = file_get_contents('php://input');
+$data = json_decode($json, true);
+
+if (is_array($data)) {
+    try {
+        $conn->begin_transaction();
+
+        // Columns in tbl_purchasereturned:
+        // Batchno, SIno, Serialno, Product, Supplier, Category, Type, Quantity, DealerPrice, TotalPrice, SRP, TotalSRP, Markup, TotalMarkup, VatSales, Vat, AmountDue, DateAdded, DatePurchase, User, AsOf, ProdPend, Stock, Branch, Warranty, imgname, TransactionNo, Reason
         
-        $('#return-type, #type').select2({
-            width: '100%',
-            placeholder: 'Select'
-        });
-    }
-    */
+        // Get max Batchno for manual increment since it's not AUTO_INCREMENT
+        $res = $conn->query("SELECT MAX(Batchno) as m FROM tbl_purchasereturned");
+        $maxRow = $res->fetch_assoc();
+        $nextBatchNo = ($maxRow['m'] ?? 0) + 1;
 
-    function loadMaintenanceOptions(itemName, elementId) {
-        console.log('Fetching options for: ' + itemName);
-        $.ajax({
-            url: './ajax-inventory/fetch-maintenance-options.php',
-            type: 'POST',
-            data: { item_name: itemName },
-            dataType: 'json',
-            success: function(data) {
-                console.log('Received data for ' + itemName + ':', data);
-                var select = $(elementId);
-                
-                // Clear existing options but keep the first one
-                select.find('option:not(:first)').remove();
+        $stmt = $conn->prepare("INSERT INTO tbl_purchasereturned (Batchno, TransactionNo, Product, SIno, Serialno, Quantity, Type, Category, Supplier, DealerPrice, TotalPrice, SRP, TotalSRP, Branch, User, AsOf, Reason, DateAdded) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+        
+        if (!$stmt) {
+            throw new Exception("Prepare failed: " . $conn->error);
+        }
 
-                if (data.error) {
-                    console.error('Error fetching ' + itemName + ':', data.error);
-                    return;
-                }
+        $user = $_SESSION['USERNAME'] ?? 'System';
+        $asOf = date('m/d/Y');
 
-                if (Array.isArray(data)) {
-                    data.forEach(function(value) {
-                        // Check if option already exists to avoid duplicates
-                        if (select.find("option[value='" + value + "']").length === 0) {
-                            var newOption = new Option(value, value, false, false);
-                            select.append(newOption);
-                        }
-                    });
-                    
-                    // If Select2 was active, this would update it.
-                    // For standard select, this does nothing harmful.
-                    // select.trigger('change'); 
-                } else {
-                    console.error('Data is not an array for ' + itemName, data);
-                }
-            },
-            error: function(xhr, status, error) {
-                console.error('AJAX Error for ' + itemName + ':', error);
-                console.log('Response:', xhr.responseText);
-                // Fallback: Try absolute path if relative fails
-                if (this.url.startsWith('./')) {
-                    console.log('Retrying with absolute path...');
-                    this.url = '/isyn/pages/inventorymanagement/ajax-inventory/fetch-maintenance-options.php';
-                    $.ajax(this);
-                }
+        foreach ($data as $row) {
+            $TransactionNo = $row['TransactionNo'] ?? '';
+            $Product = $row['Product'] ?? '';
+            $SIno = $row['SIno'] ?? '';
+            $SerialNo = $row['SerialNo'] ?? '';
+            $Quantity = $row['Quantity'] ?? 0;
+            // TransactionType is ignored as it's not in the table
+            $Type = $row['Type'] ?? '';
+            $Category = $row['Category'] ?? '';
+            $Supplier = $row['Supplier'] ?? '';
+            $DealerPrice = $row['DealerPrice'] ?? 0;
+            $TotalPrice = $row['TotalPrice'] ?? 0;
+            $SRP = $row['SRP'] ?? 0;
+            $TotalSRP = $row['TotalSRP'] ?? 0;
+            $Branch = $row['Branch'] ?? '';
+            $Reason = $row['Reason'] ?? '';
+
+            $stmt->bind_param("issssssssssssssss", $nextBatchNo, $TransactionNo, $Product, $SIno, $SerialNo, $Quantity, $Type, $Category, $Supplier, $DealerPrice, $TotalPrice, $SRP, $TotalSRP, $Branch, $user, $asOf, $Reason);
+            
+            if (!$stmt->execute()) {
+                throw new Exception("Execute failed: " . $stmt->error);
             }
-        });
-    }
+            $nextBatchNo++;
+        }
 
-    loadMaintenanceOptions('Return Type', '#return-type');
-    loadMaintenanceOptions('Type', '#type');
-    loadMaintenanceOptions('Category', '#category');
-});
+        $conn->commit();
+        echo json_encode(['status' => 'success', 'message' => 'Data saved successfully']);
+
+    } catch (Exception $e) {
+        $conn->rollback();
+        http_response_code(500);
+        error_log("Error in submit-purchase-return.php: " . $e->getMessage());
+        echo json_encode(['status' => 'error', 'message' => 'Database error: ' . $e->getMessage()]);
+    }
+} else {
+    http_response_code(400);
+    echo json_encode(['status' => 'error', 'message' => 'Invalid data format']);
+}
+?>

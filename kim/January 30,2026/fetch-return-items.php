@@ -1,5 +1,5 @@
 <?php
-include('../../../database/connection.php'); 
+include('../../../database/connection.php');
 $db = new Database();
 $conn = $db->conn;
 
