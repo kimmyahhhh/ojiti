@@ -1,4 +1,4 @@
-$(document).ready(function() {
+$(document).ready(function() { 
     console.log('purchasedreturned_maintenance.js loaded');
 
     // TEMPORARY: Disable Select2 initialization to verify data loading
