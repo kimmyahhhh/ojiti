@@ -103,14 +103,26 @@ function LoadPage(){
                 $("#orseries").append(`<option value="${value["Name"]}">${value["Name"]}</option>`);
             });
 
-            $("#clientType").empty().append("<option value='' selected disabled> Select Client Type</option> <option value'OTHER'> OTHER</option>");
-            $.each(response.CLIENTTYPE,function(key,value){
-                $("#clientType").append(`<option value="${value["Type"]}">${value["Type"]}</option>`);
-            });
+            $("#clientType").empty().append("<option value='' selected disabled> Select Client Type</option><option value='OTHER'>OTHER</option>");
+            if (response.M_CLIENTTYPE && response.M_CLIENTTYPE.length > 0){
+                $.each(response.M_CLIENTTYPE,function(key,value){
+                    $("#clientType").append(`<option value="${value}">${value}</option>`);
+                });
+            } else {
+                $.each(response.CLIENTTYPE,function(key,value){
+                    $("#clientType").append(`<option value="${value["Type"]}">${value["Type"]}</option>`);
+                });
+            }
 
-            $.each(response.FUNDS,function(key,value){
-                $("#fund").append(`<option value="${value["Fund"]}">${value["Fund"]}</option>`);
-            });
+            // $.each(response.FUNDS,function(key,value){
+            //     $("#fund").append(`<option value="${value["Fund"]}">${value["Fund"]}</option>`);
+            // });
+
+            if (response.M_FUND && response.M_FUND.length > 0){
+                $.each(response.M_FUND,function(key,value){
+                    $("#fund").append(`<option value="${value}">${value}</option>`);
+                });
+            }
 
             $.each(response.ACCOUNTCODES,function(key,value){
                 $("#AccountCodesTbody").append(`
@@ -124,6 +136,31 @@ function LoadPage(){
                     </tr>
                 `);
             });
+
+            $("#tag").empty().append("<option value='' selected disabled>Select Tag</option>");
+            if (response.M_TAG && response.M_TAG.length > 0){
+                $.each(response.M_TAG,function(key,value){
+                    $("#tag").append(`<option value="${value}">${value}</option>`);
+                });
+            } else {
+                $("#tag").append(`<option value="-">-</option><option value="Interest">Interest</option>`);
+            }
+
+            $("#paymentType").empty().append("<option value='' selected disabled>Select Payment Type</option>");
+            if (response.M_PAYMENTTYPE && response.M_PAYMENTTYPE.length > 0){
+                $.each(response.M_PAYMENTTYPE,function(key,value){
+                    $("#paymentType").append(`<option value="${value}">${value}</option>`);
+                });
+            } else {
+                $("#paymentType").append(`<option value="CASH">CASH</option><option value="CHECK">CHECK</option>`);
+            }
+
+            $("#EntrySide").empty().append("<option value=''></option>");
+            if (response.M_ENTRYSIDE && response.M_ENTRYSIDE.length > 0){
+                $.each(response.M_ENTRYSIDE,function(key,value){
+                    $("#EntrySide").append(`<option value="${value}">${value}</option>`);
+                });
+            }
 
             $('#AccountCodesTable').DataTable({
                 scrollY: '15vh',
@@ -248,9 +285,15 @@ function GetBank (fund) {
         dataType:"JSON",
         success:function(response){
             $("#bank").empty().append("<option value='' selected disabled> Select Bank</option>");
-            $.each(response.BANKLIST,function(key,value){
-                $("#bank").append(`<option value="${value["Bank"]}">${value["Bank"]}</option>`);
-            });
+            // $.each(response.BANKLIST,function(key,value){
+            //     $("#bank").append(`<option value="${value["Bank"]}">${value["Bank"]}</option>`);
+            // });
+
+            if (response.M_BANKLIST && response.M_BANKLIST.length > 0){
+                $.each(response.M_BANKLIST,function(key,value){
+                    $("#bank").append(`<option value="${value}">${value}</option>`);
+                });
+            }
         }, 
     })
 }
