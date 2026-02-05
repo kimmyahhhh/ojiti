@@ -1,0 +1,59 @@
+Change of Product SRP/DP
+tbl_invlist - Main inventory list (stores SRP, Dealer Price, quantities)
+tbl_maintenance_module - Update types, product types, categories (module_no: 134-136)
+
+Product Maintenance
+tbl_prodtype - Product types, categories, suppliers, products
+tbl_maintenance_module - Maintenance data (module_no: 171-174)
+
+  Purchased Return
+tbl_purchasereturned - Purchase return records
+tbl_purchasereturnedtransaction - Transaction history
+tbl_invlist - Inventory updates
+tbl_maintenance_module - Return types, categories
+
+Purchased Return Report
+tbl_purchasereturned - Report data source
+
+Search Products
+tbl_invlist - Product search data
+tbl_prodtype - Product type filtering
+tbl_maintenance - Branch data
+
+Purchase and Sales
+tbl_purchasejournal - Purchase journal entries
+tbl_salesjournal - Sales journal entries
+tbl_configuration - Branch setup info
+
+Cancel and Delete
+tbl_invlist - Inventory updates
+tbl_invlistconsign - Consignment inventory
+tbl_prodhistory - Product history
+tbl_invlistconsignhistory - Consignment history
+
+Acash Info
+tbl_books - Main book entries (SLName = 'ACASH')
+tbl_acash_custom - Custom ACASH entries
+tbl_acash_raw - Raw ACASH entries
+tbl_ecpay_custom - Custom ECPAY entries
+tbl_ecpay_raw - Raw ECPAY entries
+
+Other Payment
+tbl_books - Cash receipt book entries (BookType = 'CRB')
+tbl_orseries - OR series management
+tbl_clientlist - Customer information
+tbl_accountcodes - Account codes
+
+OR Setting
+tbl_orseries - OR series configuration
+TBL_ORSERIES - OR series data
+
+DS Setting
+TBL_DSNUMBERS - Deposit slip numbering
+tbl_configuration - System configuration
+
+Shared Tables Across Modules
+tbl_maintenance - Branch and other maintenance data
+tbl_sinumber - Sales invoice numbering
+tbl_clientlist - Customer/client data
+tbl_configuration - System configuration settings
