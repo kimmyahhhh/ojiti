@@ -6,14 +6,25 @@ class Process extends Database
     public function LoadPage(){
         $ORSeries = $this->SelectQuery("SELECT DISTINCT Name FROM tbl_orseries ORDER BY Name");
         $AccountCodes = $this->SelectQuery("SELECT * FROM tbl_accountcodes");
-        $Funds = $this->SelectQuery("SELECT DISTINCT Fund FROM tbl_banksetup ORDER BY Fund ASC");
+        // $Funds = $this->SelectQuery("SELECT DISTINCT Fund FROM tbl_banksetup ORDER BY Fund ASC");
         $ClientType = $this->SelectQuery("SELECT DISTINCT Type FROM tbl_clientlist ORDER BY Type");
+
+        $MClientType = $this->GetMaintenanceChoices("Cashier","Other Payment","Client Type");
+        $MPaymentType = $this->GetMaintenanceChoices("Cashier","Other Payment","Payment Type");
+        $MTag = $this->GetMaintenanceChoices("Cashier","Other Payment","Tag");
+        $MFund = $this->GetMaintenanceChoices("Cashier","Other Payment","Fund");
+        $MEntrySide = $this->GetMaintenanceChoices("Cashier","Other Payment","Entry Side");
 
         echo json_encode(array(
             "ORSERIES" => $ORSeries,
             "ACCOUNTCODES" => $AccountCodes,
-            "FUNDS" => $Funds,
+            // "FUNDS" => $Funds,
             "CLIENTTYPE" => $ClientType,
+            "M_CLIENTTYPE" => $MClientType,
+            "M_PAYMENTTYPE" => $MPaymentType,
+            "M_TAG" => $MTag,
+            "M_FUND" => $MFund,
+            "M_ENTRYSIDE" => $MEntrySide,
         ));
     }
 
@@ -38,6 +49,56 @@ class Process extends Database
         ));
     }
 
+    private function ResolveMaintenanceItemId($moduleName, $submoduleName, $itemName){
+        $moduleId = 0;
+        $subId = 0;
+        $itemId = 0;
+
+        // Module
+        $stmt = $this->conn->prepare("SELECT id_module FROM tbl_maintenance_module WHERE module_type = 0 AND module = ? LIMIT 1");
+        $stmt->bind_param("s", $moduleName);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        if($row = $res->fetch_assoc()){ $moduleId = intval($row["id_module"]); }
+        $stmt->close();
+        if($moduleId <= 0){ return 0; }
+
+        // Submodule
+        $stmt = $this->conn->prepare("SELECT id_module FROM tbl_maintenance_module WHERE module_type = 1 AND module = ? AND module_no = ? LIMIT 1");
+        $stmt->bind_param("si", $submoduleName, $moduleId);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        if($row = $res->fetch_assoc()){ $subId = intval($row["id_module"]); }
+        $stmt->close();
+        if($subId <= 0){ return 0; }
+
+        // Item
+        $stmt = $this->conn->prepare("SELECT id_module FROM tbl_maintenance_module WHERE module_type = 2 AND module = ? AND module_no = ? LIMIT 1");
+        $stmt->bind_param("si", $itemName, $subId);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        if($row = $res->fetch_assoc()){ $itemId = intval($row["id_module"]); }
+        $stmt->close();
+
+        return $itemId;
+    }
+
+    private function GetMaintenanceChoices($moduleName, $submoduleName, $itemName){
+        $choices = [];
+        $itemId = $this->ResolveMaintenanceItemId($moduleName, $submoduleName, $itemName);
+        if($itemId <= 0){ return $choices; }
+
+        $stmt = $this->conn->prepare("SELECT module as choice_value FROM tbl_maintenance_module WHERE module_type = 3 AND status = 1 AND module_no = ? ORDER BY module ASC");
+        $stmt->bind_param("i", $itemId);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        while($row = $res->fetch_assoc()){
+            $choices[] = $row["choice_value"];
+        }
+        $stmt->close();
+        return $choices;
+    }
+
     public function LoadClientNameInfo($data){
         $clientName = $data['clientName'];
         $clientInfo = "";
@@ -60,23 +121,26 @@ class Process extends Database
     }
 
     public function GetBank($data){
-        $fund = $data['fund'];
-        $banklist = [];
+        // $fund = $data['fund'];
+        // $banklist = [];
 
-        $stmt = $this->conn->prepare("SELECT Bank FROM tbl_banksetup WHERE Fund = ? AND Bank <> '-' ORDER BY Bank ASC");
-        $stmt->bind_param('s', $fund);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $stmt->close();
+        // $stmt = $this->conn->prepare("SELECT Bank FROM tbl_banksetup WHERE Fund = ? AND Bank <> '-' ORDER BY Bank ASC");
+        // $stmt->bind_param('s', $fund);
+        // $stmt->execute();
+        // $result = $stmt->get_result();
+        // $stmt->close();
 
-        if ($result->num_rows > 0) {
-            while ($row = $result->fetch_assoc()) {
-                $banklist[] = $row;
-            }
-        }
+        // if ($result->num_rows > 0) {
+        //     while ($row = $result->fetch_assoc()) {
+        //         $banklist[] = $row;
+        //     }
+        // }
+
+        $MBank = $this->GetMaintenanceChoices("Cashier","Other Payment","Bank");
 
         echo json_encode(array( 
-            "BANKLIST" => $banklist,
+            // "BANKLIST" => $banklist,
+            "M_BANKLIST" => $MBank,
         ));
     }
 
