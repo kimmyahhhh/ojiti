@@ -95,6 +95,8 @@
                                 <div class="col-md-9">
                                     <div class="d-flex justify-content-end">
                                         <button class="btn btn-danger px-3 py-2 mx-1" type="button" id="cancel" onclick="Cancel()" disabled hidden> Cancel</button>
+                                        <button id="updateBtn" class="btn btn-success px-3 py-2 mx-1" type="button" onclick="Save();" disabled hidden><i class="fa-solid fa-floppy-disk"></i> Update </button>
+                                        <button id="editSaveBtn" class="btn btn-primary px-3 py-2 mx-1" type="button" onclick="Save();" disabled hidden><i class="fa-solid fa-floppy-disk"></i> Save </button>
 
                                         <button id="addToList" class="btn btn-primary px-3 py-2 mx-1" type="button" disabled hidden><i class="fa-solid fa-plus"></i> Add to List </button>
                                         
@@ -115,42 +117,43 @@
                                     <div class="col-sm-8">
                                         <select class="form-select" id="branch" name="branch" aria-label="Default select example" required>
                                             <option value="" selected disabled>Select</option>
-                                            <option value="HEAD OFFICE">HEAD OFFICE</option>
+                                            
                                         </select>
                                     </div>
                                 </div>
                                 <div class="mb-2 row">
                                     <label for="type" class="col-sm-4 col-form-label">Product Type: </label>
                                     <div class="col-sm-8">
-                                        <select class="form-select" aria-label="Type" required name="type" id="type" onchange="LoadProdCateg(this.value);">
+                                        <select class="form-select" aria-label="Type" required name="type" id="type">
                                             <option value="" selected disabled>Select</option>
-                                            <option value="WITH VAT">WITH VAT</option>
-                                            <option value="NON-VAT">NON-VAT</option>
+                                            
                                         </select>
                                     </div>
                                 </div>
                                 <div class="mb-3 row">
                                     <label for="category" class="col-sm-4 col-form-label">Product Category: </label>
                                     <div class="col-sm-8">
-                                        <select class="form-select" aria-label="Category" required name="category" id="category">
+                                       <select class="form-select" aria-label="Category" name="category" id="category">
+                                                
                                             <option value="" selected disabled>Select</option>
-                                            <option value="Battery">Battery</option>
-                                            <option value="Cable">Cable</option>
-                                            <option value="Cartridge">Cartridge</option>
-                                            <option value="Connector">Connector</option>
+                                            
                                         </select>
                                     </div>
                                 </div>
                                 <div class="row">
                                     <label for="product" class="col-sm-4 col-form-label">Product Name: </label>
                                     <div class="col-sm-8 mt-2">
-                                        <input type="text" class="form-control" required name="product" id="product" placeholder="">
+                                        <select class="form-select" required name="product" id="product">
+                                            <option value="" selected disabled>Select</option>
+                                        </select>
                                     </div>
                                 </div>
                                 <div class="mb-2 row">
                                     <label for="supplier" class="col-sm-4 col-form-label">Supplier: </label>
                                     <div class="col-sm-8 mt-2">
-                                        <input type="text" class="form-control" required name="supplier" id="supplier" placeholder="" disabled>
+                                        <select class="form-select" required name="supplier" id="supplier" disabled>
+                                            <option value="" selected disabled>Select</option>
+                                        </select>
                                     </div>
                                 </div>
                                 <div class="mb-2 row">
@@ -183,12 +186,7 @@
                                         <input type="file" class="form-control" id="imageName" name="imageName" accept=".jpg,.jpeg,.png" disabled>
                                     </div>
                                 </div>
-                                <div class="mb-3 row">
-                                    <label for="dateEncoded" class="col-sm-4 col-form-label">Date Encoded: </label>
-                                    <div class="col-md-8">
-                                        <input type="text" class="form-control" id="dateEncoded" name="dateEncoded" disabled value="<?php echo date('m/d/Y'); ?>">
-                                    </div>
-                                </div>
+                                <!-- Date Encoded field removed from UI as requested -->
                                 <div class="mb-2 row">
                                     <label for="dealersPrice" class="col-sm-4 col-form-label">Dealer(s) Price: </label>
                                     <div class="col-md-8">
@@ -239,13 +237,20 @@
                     <div class="col-lg-8 mt-2">
                         <div class="shadow p-3 rounded-3 mb-2" style="background-color: white;overflow:auto;">
                             <div class="row">
-                                <div class="col-md-6">
+                                <div class="col-md-3">
                                     <p class="fw-medium fs-5" style="color: #090909;">Data Inventory</p>
                                 </div>
-                                <div class="col-md-6">
+                                <div class="col-md-9">
                                     <div class="d-flex justify-content-end align-items-center">
+                                        <div class="input-group me-2" style="width: auto;">
+                                            <span class="input-group-text">From</span>
+                                            <input type="text" class="form-control" id="filterDateFrom" placeholder="mm/dd/yyyy" style="width: 110px;">
+                                            <span class="input-group-text">To</span>
+                                            <input type="text" class="form-control" id="filterDateTo" placeholder="mm/dd/yyyy" style="width: 110px;">
+                                        </div>
                                         <input type="text" class="form-control me-2" id="searchDataInv" placeholder="Search..." style="width: 200px;">
-                                        <button class="btn btn-info px-3 py-2 mx-1" id="printBtn" name="printBtn" type="button" onclick="PrintSupplierSalesInvoice();" disabled><i class="fa-solid fa-print"></i> Print</button>
+                                        
+                                        <button class="btn btn-secondary px-3 py-2 mx-1" id="clearFilterBtn" type="button" onclick="ClearFilter()" title="Clear Filters"><i class="fa-solid fa-eraser"></i></button>
                                         <button class="btn btn-danger px-3 py-2 mx-1" name="DeleteFromDataInvBtn" id="DeleteFromDataInvBtn" type="button" onclick="DeleteFromDataInv()" disabled><i class="fa-solid fa-trash"></i></button>
                                     </div>
                                 </div>
@@ -284,6 +289,7 @@
                             </div>
                         </div>
 
+                        <!-- Items Table moved here -->
                         <div class="shadow p-3 rounded-3 mb-2" style="background-color: white;overflow:auto;">
                             <div class="row">
                                 <div class="align-items-center justify-content-between">
@@ -313,25 +319,6 @@
                                         <th>Purchase Date</th>
                                         <th>Image Name</th>
                                         <th>Date Encoded</th>
-
-                                        <!-- <th>0</th>
-                                        <th>1</th>
-                                        <th>2</th>
-                                        <th>3</th>
-                                        <th>4</th>
-                                        <th>5</th>
-                                        <th>6</th>
-                                        <th>7</th>
-                                        <th>8</th>
-                                        <th>9</th>
-                                        <th>10</th>
-                                        <th>11</th>
-                                        <th>12</th>
-                                        <th>13</th>
-                                        <th>14</th>
-                                        <th>15</th>
-                                        <th>16</th>
-                                        <th>17</th> -->
                                     </thead>
                                     <tbody id="itemList">
                                     </tbody>
