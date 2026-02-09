@@ -2,19 +2,161 @@ var dataInvTbl, dataInvTblValue = "", itemTbl, SelectedFromList = "", SelectedFr
 var isUpdate = false;
 var origSIno = "", origSerial = "", origProduct = "";
 var editingItemRow = null;
+var isSaving = false;
+
+// Debugging (enable: localStorage.setItem('debug_incominginventory','1'); then refresh)
+var DEBUG_INCOMING = false;
+try { DEBUG_INCOMING = (localStorage.getItem('debug_incominginventory') === '1'); } catch(e) {}
+var _incomingDebugLines = [];
+function incomingDebugLog(msg, obj){
+    if (!DEBUG_INCOMING) return;
+    try {
+        var ts = new Date().toISOString().slice(11,19);
+        var line = "[" + ts + "] " + msg + (obj ? (" " + JSON.stringify(obj)) : "");
+        _incomingDebugLines.push(line);
+        if (_incomingDebugLines.length > 200) _incomingDebugLines.shift();
+        console.log("%c[IncomingInv]", "color:#6f42c1;font-weight:bold", msg, obj || "");
+        var box = document.getElementById('incomingDebugBox');
+        if (box) { box.textContent = _incomingDebugLines.join("\n"); box.scrollTop = box.scrollHeight; }
+    } catch(err) {}
+}
+function incomingEnsureDebugUI(){
+    if (!DEBUG_INCOMING) return;
+    if (document.getElementById('incomingDebugWrap')) return;
+    var wrap = document.createElement('div');
+    wrap.id = 'incomingDebugWrap';
+    wrap.style.cssText = "position:fixed;right:12px;bottom:12px;width:520px;max-width:90vw;height:220px;z-index:99999;background:#111;border:1px solid #444;border-radius:8px;padding:8px;opacity:.92;";
+    var hdr = document.createElement('div');
+    hdr.style.cssText = "display:flex;justify-content:space-between;align-items:center;color:#fff;font:12px/1.2 system-ui,Segoe UI,Arial;";
+    hdr.innerHTML = "<div><b>Incoming Inventory Debug</b> (debug_incominginventory=1)</div>";
+    var btns = document.createElement('div');
+    btns.innerHTML = "<button id='incomingDbgCopy' style='margin-right:6px;font-size:12px;'>Copy</button><button id='incomingDbgHide' style='font-size:12px;'>Hide</button>";
+    hdr.appendChild(btns);
+    var pre = document.createElement('pre');
+    pre.id = 'incomingDebugBox';
+    pre.style.cssText = "margin:8px 0 0 0;height:180px;overflow:auto;white-space:pre-wrap;color:#cfe3ff;font:11px/1.35 ui-monospace,Consolas,monospace;";
+    wrap.appendChild(hdr);
+    wrap.appendChild(pre);
+    document.body.appendChild(wrap);
+    document.getElementById('incomingDbgCopy').onclick = function(){
+        try { navigator.clipboard.writeText(_incomingDebugLines.join("\n")); } catch(e){}
+    };
+    document.getElementById('incomingDbgHide').onclick = function(){
+        wrap.style.display = 'none';
+    };
+}
+
+// Always print a tiny load marker so we can confirm this file is the one running.
+try { console.log("%c[incominginventory.js] loaded", "color:#0d6efd;font-weight:bold"); } catch(e) {}
 
 $(document).ready(function() {
     var invRefreshTimer = null;
+    incomingEnsureDebugUI();
+    incomingDebugLog("ready()");
+    if (DEBUG_INCOMING) {
+        $(document).ajaxSend(function(_e, _xhr, settings){
+            incomingDebugLog("ajaxSend", {url: settings.url, type: settings.type});
+        });
+        $(document).ajaxError(function(_e, xhr, settings, thrown){
+            incomingDebugLog("ajaxError", {url: settings.url, status: xhr.status, statusText: xhr.statusText, thrown: thrown});
+        });
+        $(document).ajaxComplete(function(_e, xhr, settings){
+            incomingDebugLog("ajaxComplete", {url: settings.url, status: xhr.status});
+        });
+    }
     
+    // Custom DataTables filtering for Date Range
+    $.fn.dataTable.ext.search.push(
+        function(settings, data, dataIndex) {
+            // Only apply to the Data Inventory Table
+            if (settings.nTable.id !== 'dataInvTbl') {
+                return true;
+            }
+
+            var min = $('#filterDateFrom').val();
+            var max = $('#filterDateTo').val();
+            // Purchase Date is at index 7 (0-based) based on the HTML table header order
+            // 0:SI, 1:Serial, 2:Prod, 3:Supp, 4:Categ, 5:Type, 6:Branch, 7:PurchaseDate
+            var dateStr = data[7] || ''; 
+            
+            if (!min && !max) return true;
+
+            var date = new Date(dateStr);
+            var minDate = min ? new Date(min) : null;
+            var maxDate = max ? new Date(max) : null;
+
+            // Invalid date in row -> exclude if filtering is active, or handle as needed
+            if (isNaN(date.getTime())) return false;
+
+            if (
+                (!minDate || date >= minDate) &&
+                (!maxDate || date <= maxDate)
+            ) {
+                return true;
+            }
+            return false;
+        }
+    );
+
     $("#category").select2({
         width: '100%',
+        disabled: true
     });
-    // Free-text for supplier and SI; no select2 needed
+    $("#product").select2({
+        width: '100%',
+        disabled: true
+    });
+    $("#supplier").select2({
+        width: '100%',
+        disabled: true
+    });
+
+    // Bind Change Events for Dependent Dropdowns
+    $('#type').on('change', function() {
+        LoadProdCateg($(this).val());
+    });
+    $('#category').on('change', function() {
+        LoadProdName($(this).val());
+    });
+    $('#product').on('change', function() {
+        LoadSupplier($(this).val());
+        // Trigger auto-pricing lookup
+        AutoFillPricing();
+    });
 
     Initialize();
     InitializeDataTable(); // Initialize table immediately
     (function(){ try { var data = localStorage.getItem('incoming_itemTbl'); if (data) { var arr = JSON.parse(data); if (Array.isArray(arr)) { arr.forEach(function(entry){ itemTbl.row.add(entry).draw(false); }); } } } catch(e){ localStorage.removeItem('incoming_itemTbl'); } })();
     LoadDataInventory();
+    // Lock all inputs initially
+    $('#inventoryinForm input, #inventoryinForm select, #inventoryinForm textarea').prop('disabled', true);
+    lockFormInputs(true);
+    
+    // Bind to our own Save reference to avoid global `Save()` name collisions with other modules
+    window.IncomingInventorySave = Save;
+    // Remove inline onclick handlers (they can call a different global Save() from other modules)
+    try { $('#save, #updateBtn, #editSaveBtn').removeAttr('onclick'); } catch(e){}
+    $('#updateBtn').off('click.incoming').on('click.incoming', function(e){
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        incomingDebugLog("updateBtn click handler fired", {disabled: $(this).prop('disabled'), hidden: $(this).prop('hidden')});
+        if (DEBUG_INCOMING) { try { Swal.fire({toast:true,position:'top-end',timer:2000,showConfirmButton:false,icon:'info',title:'Update click detected'}); } catch(_e){} }
+        window.IncomingInventorySave();
+    });
+    $('#save').off('click.incoming').on('click.incoming', function(e){
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        incomingDebugLog("save button click handler fired", {disabled: $(this).prop('disabled'), hidden: $(this).prop('hidden')});
+        if (DEBUG_INCOMING) { try { Swal.fire({toast:true,position:'top-end',timer:2000,showConfirmButton:false,icon:'info',title:'Save click detected'}); } catch(_e){} }
+        window.IncomingInventorySave();
+    });
+    $('#editSaveBtn').off('click.incoming').on('click.incoming', function(e){
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        incomingDebugLog("editSaveBtn click handler fired", {disabled: $(this).prop('disabled'), hidden: $(this).prop('hidden')});
+        if (DEBUG_INCOMING) { try { Swal.fire({toast:true,position:'top-end',timer:2000,showConfirmButton:false,icon:'info',title:'Edit-Save click detected'}); } catch(_e){} }
+        window.IncomingInventorySave();
+    });
 
     $('#purchaseDate').on('change', function(){
         var val = $(this).val();
@@ -50,8 +192,18 @@ $(document).ready(function() {
     $('#addToList').on('click', function() {
         console.log("Add to List clicked");
         if (!$.fn.DataTable.isDataTable('#itemTbl')) {
-             Swal.fire("Error", "Item table not initialized yet. Please refresh.", "error");
+             console.log("Item table not initialized. Attempting to initialize...");
+             InitializeDataTable();
+        }
+        
+        if (!$.fn.DataTable.isDataTable('#itemTbl')) {
+             Swal.fire("Error", "Item table initialization failed (Code: DT-INIT-FAIL). Please refresh the page.", "error");
              return;
+        }
+        
+        // Ensure itemTbl variable is set correctly
+        if (!itemTbl) {
+            itemTbl = $('#itemTbl').DataTable();
         }
         
         console.log(DataInvSINo);
@@ -63,9 +215,16 @@ $(document).ready(function() {
         let supplierSI = $('#suppliersSI').val();
         let serialNo = $('#serialNo').val(); 
         let purchaseDate = $('#purchaseDate').val();
-        let warranty = $('#warranty').val();
+        let warranty = String($('#warranty').val()||'').toUpperCase();
         let imageName = $('#imageName').val();
-        let dateEncoded = $('#dateEncoded').val();
+        
+        // Auto-calculate dateEncoded: Current date for new items
+        var now = new Date();
+        var mm = (now.getMonth() > 8) ? (now.getMonth() + 1) : ('0' + (now.getMonth() + 1));
+        var dd = (now.getDate() > 9) ? now.getDate() : ('0' + now.getDate());
+        var yyyy = now.getFullYear();
+        let dateEncoded = mm + '/' + dd + '/' + yyyy;
+        
         let dealerPrice = $('#dealersPrice').val();
         let srp = $('#srp').val();
         let quantity = $('#quantity').val();
@@ -114,8 +273,11 @@ $(document).ready(function() {
     });
 
     $('#editBtn').on('click', function() {
-        if (editingItemRow) { isUpdate = false; } else { isUpdate = true; }
+        // If a record was selected from Data Inventory, Edit means "update that record".
+        // Do NOT base this on `editingItemRow` (that's for the staging item list).
+        isUpdate = (SelectedFromDataInv !== "");
         
+        // Enable fields
         $('#branch').prop('disabled', false);
         $('#type').prop('disabled', false);
         $('#category').prop('disabled', false);
@@ -134,22 +296,116 @@ $(document).ready(function() {
         // Ensure all form inputs are enabled (except readonly ones)
         $('#inventoryinForm input:not([readonly]), #inventoryinForm select, #inventoryinForm textarea').prop('disabled', false);
         
-        // Hide/Show Buttons
-        $('#editBtn').prop('hidden', true);
-        $('#save').prop('hidden', false).prop('disabled', false).removeAttr('hidden').removeAttr('disabled');
-        $('#cancel').prop('hidden', false).prop('disabled', false);
-        $('#addToList').prop('hidden', true).prop('disabled', true).attr('hidden','hidden').attr('disabled','disabled');
+        // Ensure dependent fields are properly enabled if parent is selected
+        if ($('#category').val()) { $('#product').prop('disabled', false); }
+        if ($('#product').val()) { $('#supplier').prop('disabled', false); }
+        
+        // Fix: Force reload of dropdowns to ensure all options are available
+        // This addresses the issue where only the current product is visible in the dropdown
+        var curType = $('#type').val();
+        var curCat = $('#category').val();
+        var curProd = $('#product').val();
+        var curSupp = $('#supplier').val();
+        
+        // Also reload categories based on type
+        if (curType) {
+             // We need to reload category list too, not just product list
+             // LoadProdCateg will clear category, so we need to set pending value for it too if possible,
+             // but LoadProdCateg doesn't support "pendingCategory" logic yet.
+             // Let's call LoadProdCateg and handle re-selection manually or via updated logic.
+             // Actually, the simplest way is to trigger change on Type if we want to refresh categories,
+             // BUT that might clear the current selection.
+             
+             // Strategy: Reload Categories, then Products.
+             // We'll use a one-off handler or modify LoadProdCateg to support preserving selection?
+             // Or just call it and rely on the fact that we can set the value back.
+             
+             LoadProdCateg(curType);
+             
+             // Wait for AJAX? LoadProdCateg is async. 
+             // We can use a global 'pendingCategory' on the #type element similar to how product works.
+             $('#type').data('pendingCategory', curCat);
+             
+             // And pass pending down the chain
+             $('#category').data('pendingProduct', curProd);
+             $('#product').data('pendingSupplier', curSupp);
+        } else if (curCat) {
+             $('#category').data('pendingProduct', curProd);
+             $('#product').data('pendingSupplier', curSupp);
+             LoadProdName(curCat);
+        }
+        
+        setButtonState('edit_mode');
     });
+
+    // Safety: if Update is visible, keep it clickable after any edit
+    $('#inventoryinForm').on('input change', 'input, select, textarea', function(){
+        if (!$('#updateBtn').prop('hidden')) {
+            $('#updateBtn').prop('disabled', false).removeAttr('disabled').css('pointer-events','auto');
+        }
+    });
+
+    // --- Centralized Button State Management ---
+    // states: 'new', 'edit', 'add_mode', 'initial'
+    window.setButtonState = function(state) {
+        console.log("Setting button state to:", state);
+        
+        // Helper to force show/hide
+        const show = (sel) => $(sel).removeAttr('hidden').prop('disabled', false).show().css('display', 'inline-block');
+        const hide = (sel) => $(sel).attr('hidden', 'hidden').prop('disabled', true).hide().css('display', 'none');
+
+        if (state === 'initial') {
+            show('#addNew');
+            hide('#cancel');
+            hide('#addToList');
+            hide('#save');
+            hide('#updateBtn');
+            hide('#editBtn');
+            hide('#editSaveBtn');
+        } 
+        else if (state === 'add_mode') {
+            hide('#addNew');
+            show('#cancel');
+            show('#addToList');
+            show('#save');
+            hide('#updateBtn');
+            hide('#editBtn');
+            hide('#editSaveBtn');
+        }
+        else if (state === 'edit_mode') {
+            hide('#addNew');
+            show('#cancel');
+            hide('#addToList');
+            hide('#save');
+            show('#updateBtn');
+            hide('#editBtn'); // We are IN edit mode, so hide the "Edit" button itself if it was for triggering edit
+            hide('#editSaveBtn');
+        }
+        else if (state === 'view_mode') {
+             // Selected from Data Inventory
+            hide('#addNew');
+            show('#cancel');
+            hide('#addToList');
+            hide('#save');
+            hide('#updateBtn');
+            show('#editBtn');
+            hide('#editSaveBtn');
+        }
+    };
 
     $('#addNew').on('click', function() {
         isUpdate = false;
-        $('#branch').prop('disabled', false).val('');
-        $('#type').prop('disabled', false).val('');
-        $('#category').prop('disabled', false).val('');
-        $('#product').prop('disabled', false).val('');
-        $('#supplier').prop('disabled', false).val('');
+        lockFormInputs(false);
+        $('#branch').val('');
+        $('#type').val('');
+        
+        // Reset dropdowns properly for Select2
+        $('#category').empty().append('<option value="" disabled selected>Select</option>').trigger('change');
+        $('#product').empty().append('<option value="" disabled selected>Select</option>').trigger('change');
+        $('#supplier').empty().append('<option value="" disabled selected>Select</option>').trigger('change');
+        
         $('#suppliersSI').prop('disabled', false).val('');
-        $('#serialNo').prop('disabled', false).val('');   
+        $('#serialNo').prop('disabled', false).val('');
         $('#purchaseDate').prop('disabled', false);
         $('#warranty').prop('disabled', false).val('');
         $('#imageName').prop('disabled', false).val('');
@@ -161,20 +417,12 @@ $(document).ready(function() {
         $('#totalSRP').prop('readonly', true).val('');
         $('#mpi').prop('readonly', true).val('');
         $('#totalmarkup').prop('readonly', true).val('');
-        $('#addNew').prop('hidden', true);
-        $('#addNew').prop('disabled', true);
-        $('#cancel').prop('hidden', false);
-        $('#cancel').prop('disabled', false);
-        $('#addToList').prop('hidden', false);
-        $('#addToList').prop('disabled', false);
-        $('#save').prop('hidden', false);
-        $('#save').prop('disabled', false);
-        $('#editBtn').prop('hidden', true); // Ensure hidden
+        
+        setButtonState('add_mode');
+        
         // Ensure all form inputs are enabled (except readonly ones)
         $('#inventoryinForm input:not([readonly]), #inventoryinForm select, #inventoryinForm textarea').prop('disabled', false);
-        $('#suppliersSI').prop('disabled', false); // Explicitly enable suppliersSI
-        $('#supplier').prop('disabled', false); // Explicitly enable supplier
-        $('#product').prop('disabled', false); // Explicitly enable product
+        $('#suppliersSI').prop('disabled', false);
 
         // $("#CustomerInfoTbl tbody tr").removeClass("selected");
         var now = new Date();
@@ -182,150 +430,115 @@ $(document).ready(function() {
         var dd = (now.getDate() > 9) ? now.getDate() : ('0' + now.getDate());
         var yyyy = now.getFullYear();
         var todayStr = mm + '/' + dd + '/' + yyyy;
-        $('#dateEncoded').val(todayStr);
+        // $('#dateEncoded').val(todayStr); // No longer needed in UI
         $('#purchaseDate').val(todayStr);
         if ($("#branch option").filter(function(){ return $(this).text().toUpperCase() === "HEAD OFFICE"; }).length > 0) {
             $('#branch').val("HEAD OFFICE");
         }
         if ($("#type option").filter(function(){ return $(this).text().toUpperCase() === "WITH VAT"; }).length > 0) {
             $('#type').val("WITH VAT");
-            LoadProdCateg("WITH VAT");
+            // This will trigger the change event we bound earlier, calling LoadProdCateg
+            $('#type').trigger('change'); 
         }
     });
 
-    // Use event delegation on the document to ensure it works even if the table is redrawn
-    $(document).on('click', '#dataInvTbl tr', function(e) {
-        // Skip header row
-        if ($(this).find('th').length > 0) return;
-
-        // Debugging
-        console.log("Row clicked!", this);
-        
-        let classList = e.currentTarget.classList;
-        
-        if (classList.contains('selected')) {
-            classList.remove('selected');
-            $("#DeleteFromDataInvBtn").attr("disabled", true);
-            dataInvTblValue = "";
-            SelectedFromDataInv = "";
-            itemTbl.clear().draw();
-            
-            // Disable form if deselected
-            $('#inventoryinForm input:not([readonly]), #inventoryinForm select, #inventoryinForm textarea').prop('disabled', true);
-            $('#addNew').prop('hidden', false).prop('disabled', false);
-            $('#save').prop('hidden', true);
-            $('#cancel').prop('hidden', true);
-            $('#editBtn').prop('hidden', true);
-
-        } else {
-            // Deselect others
-            if ($.fn.DataTable.isDataTable('#dataInvTbl')) {
-                $('#dataInvTbl').DataTable().rows('.selected').nodes().each((row) => {
-                    row.classList.remove('selected');
-                });
-            }
-            
-            classList.add('selected');
-            $("#DeleteFromDataInvBtn").attr("disabled", false);
-            
-            // Get data from the DOM directly to ensure reliability
+    // Reliable row selection and form population using DataTables API
+    $('#dataInvTbl tbody').off('click.rowselect').on('click.rowselect', 'tr', function(e){
+        if (!$.fn.DataTable.isDataTable('#dataInvTbl')) return;
+        var dt = $('#dataInvTbl').DataTable();
+        dt.rows('.selected').nodes().each((row) => { row.classList.remove('selected'); });
+        $(this).addClass('selected');
+        $("#DeleteFromDataInvBtn").attr("disabled", false);
+        var d = dt.row(this).data() || [];
+        if (!Array.isArray(d) || d.length === 0) {
+            // Fallback to DOM cells if DataTables did not return data
             var cells = $(this).find('td');
-            var getVal = (index) => cells.eq(index).text().trim();
+            d = [];
+            cells.each(function(){ d.push($(this).text().trim()); });
+        }
+        var d_SIno = d[0] || '', d_SerialNo = d[1] || '', d_Product = d[2] || '', d_Supplier = d[3] || '';
+        var d_Category = d[4] || '', d_Type = d[5] || '', d_Branch = d[6] || '';
+        
+        // Use hidden columns for cleaner access if available
+        // Note: DataTables data() usually returns raw array based on column index
+        
+        // ... (rest of variable assignments) ...
+        var d_PurchaseDate = d[7] || '', d_Warranty = d[8] || '', d_DateEncoded = d[9] || '';
+        var d_Quantity = d[10] || '', d_DealerPrice = d[11] || '', d_SRP = d[12] || '';
+        var d_TotalPrice = d[13] || '', d_TotalSRP = d[14] || '', d_MPI = d[15] || '';
+        var d_TotalMarkup = d[16] || '', d_ImgName = d[20] || '';
 
-            if (cells.length > 0) {
-                // Extract values using DOM indices
-                var d_SIno = getVal(0);
-                var d_SerialNo = getVal(1);
-                var d_Product = getVal(2);
-                var d_Supplier = getVal(3);
-                var d_Category = getVal(4);
-                var d_Type = getVal(5);
-                var d_Branch = getVal(6);
-                var d_PurchaseDate = getVal(7);
-                var d_Warranty = getVal(8);
-                var d_DateEncoded = getVal(9);
-                var d_Quantity = getVal(10);
-                var d_DealerPrice = getVal(11);
-                var d_SRP = getVal(12);
-                var d_TotalPrice = getVal(13);
-                var d_TotalSRP = getVal(14);
-                var d_MPI = getVal(15);
-                var d_TotalMarkup = getVal(16);
-                var d_ImgName = getVal(20);
+        itemTbl.clear().draw();
+        itemTbl.row.add([
+            d_Product, d_SerialNo, d_Warranty, d_DealerPrice, d_SRP, d_Quantity,
+            d_TotalPrice, d_TotalSRP, d_MPI, d_TotalMarkup,
+            d_Branch, d_Type, d_Category, d_Supplier, d_SIno,
+            d_PurchaseDate, d_ImgName, d_DateEncoded
+        ]).draw(false);
+        // This row is a "view of selected inventory record", not a staging edit row.
+        editingItemRow = null;
 
-                console.log("Selected Row Data (DOM):", d_Product, d_SerialNo);
-                
-                itemTbl.clear().draw();
-                itemTbl.row.add([
-                    d_Product,
-                    d_SerialNo,
-                    d_Warranty,
-                    d_DealerPrice,
-                    d_SRP,
-                    d_Quantity,
-                    d_TotalPrice,
-                    d_TotalSRP,
-                    d_MPI,
-                    d_TotalMarkup,
-                    d_Branch,
-                    d_Type,
-                    d_Category,
-                    d_Supplier,
-                    d_SIno,
-                    d_PurchaseDate,
-                    d_ImgName,
-                    d_DateEncoded,
-                ]).draw(false);
+        $('#branch').val(d_Branch);
+        $('#type').val(d_Type);
+        
+        // Handle Category Select2
+        if (d_Category && $('#category option').filter(function(){ return $(this).text() === d_Category; }).length == 0) {
+            $('#category').append('<option value="'+d_Category+'">'+d_Category+'</option>');
+        }
+        $('#category').data('pendingProduct', d_Product);
+        $('#product').data('pendingSupplier', d_Supplier);
+        $('#category').val(d_Category).trigger('change');
+        
+        // Product/Supplier will be handled by the trigger('change') + pending data logic
+        // We do NOT need to manually set them here because LoadProdName/LoadSupplier are async
+        // and will use the pending data to set the value once loaded.
+        
+        $('#suppliersSI').val(d_SIno);
+        $('#serialNo').val(d_SerialNo);
+        $('#purchaseDate').val(d_PurchaseDate);
+        $('#warranty').val(d_Warranty);
+        
+        // Preserve original Date Encoded for existing records (hidden field or memory)
+        // Since we removed it from UI, we store it in a data attribute on the form or a hidden input
+        // But the request was to "remove it to the form" and "automatically set to when the product is encoded"
+        // which usually means: New = NOW(), Edit = Original Value.
+        // We'll store it in a variable for the Save/Update logic to pick up.
+        if (d_DateEncoded) {
+             $('#inventoryinForm').data('originalDateEncoded', d_DateEncoded);
+        } else {
+             $('#inventoryinForm').removeData('originalDateEncoded');
+        }
+        
+        $('#dealersPrice').val(d_DealerPrice);
+        $('#srp').val(d_SRP);
+        $('#quantity').val(d_Quantity);
+        $('#totalPrice').val(d_TotalPrice);
+        $('#totalSRP').val(d_TotalSRP);
+        $('#mpi').val(d_MPI);
+        $('#totalmarkup').val(d_TotalMarkup);
 
-                // Populate Form Fields
-                $('#branch').val(d_Branch);
-                $('#type').val(d_Type);
-                
-                // Handle Category Dropdown
-                if ($('#category option[value="'+d_Category+'"]').length == 0) {
-                        $('#category').append('<option value="'+d_Category+'">'+d_Category+'</option>');
-                }
-                $('#category').val(d_Category).trigger('change');
+        // Lock fields until Edit and show controls
+        lockFormInputs(true);
+        $('#inventoryinForm input, #inventoryinForm select, #inventoryinForm textarea').prop('disabled', true);
 
-                $('#product').val(d_Product);
-                $('#supplier').val(d_Supplier);
-                $('#suppliersSI').val(d_SIno);
-                $('#serialNo').val(d_SerialNo);
-                $('#purchaseDate').val(d_PurchaseDate);
-                $('#warranty').val(d_Warranty);
-                $('#dateEncoded').val(d_DateEncoded);
-                $('#dealersPrice').val(d_DealerPrice);
-                $('#srp').val(d_SRP);
-                $('#quantity').val(d_Quantity);
-                
-                Compute();
+        isUpdate = true;
+        
+        setButtonState('view_mode');
 
-                // $('#totalPrice').val(d_TotalPrice);
-                // $('#totalSRP').val(d_TotalSRP);
-                // $('#mpi').val(d_MPI);
-                // $('#totalmarkup').val(d_TotalMarkup);
-                
-                // Auto Compute Totals based on loaded values
-                Compute();
-                
-                // DISABLE ALL FIELDS INITIALLY (Like Shareholder Info)
-                $('#inventoryinForm input:not([readonly]), #inventoryinForm select, #inventoryinForm textarea').prop('disabled', true);
-
-                // Enable/Show Edit Button, Hide Save
-                isUpdate = true;
-                $('#editBtn').prop('hidden', false).prop('disabled', false);
-                $('#save').prop('hidden', true); 
-                $('#cancel').prop('hidden', false).prop('disabled', false);
-                $('#addNew').prop('hidden', true);
-                $('#addToList').prop('hidden', true);
-                
-                // Store Original Keys
-                origSIno = d_SIno;
-                origSerial = d_SerialNo;
-                origProduct = d_Product;
-            }
-        }    
+        // Keys for update/delete
+        origSIno = d_SIno; origSerial = d_SerialNo; origProduct = d_Product;
+        dataInvTblValue = d; SelectedFromDataInv = this;
     });
+
+    function lockFormInputs(lock){
+        $('#branch').prop('disabled', lock);
+        $('#type').prop('disabled', lock);
+        $('#category').prop('disabled', lock);
+        $('#product').prop('disabled', lock);
+        $('#supplier').prop('disabled', lock);
+    }
+
+    // Removed duplicate document-level row click handler to improve performance
 
     $('#itemTbl tbody').on('click', 'tr',function(e){
         let classList = e.currentTarget.classList;
@@ -368,26 +581,36 @@ $(document).ready(function() {
             if ($('#category option[value="'+categ+'"]').length == 0) {
                 $('#category').append('<option value="'+categ+'">'+categ+'</option>');
             }
+            $('#category').data('pendingProduct', product);
+            $('#product').data('pendingSupplier', supplier);
             $('#category').val(categ).trigger('change');
+            if (product && $('#product option[value="'+product+'"]').length == 0) {
+                $('#product').append('<option value="'+product+'">'+product+'</option>');
+            }
             $('#product').val(product);
+            
+            if (supplier && $('#supplier option[value="'+supplier+'"]').length == 0) {
+                $('#supplier').append('<option value="'+supplier+'">'+supplier+'</option>');
+            }
             $('#supplier').val(supplier);
+            
             $('#suppliersSI').val(supplierSI);
             $('#serialNo').val(serialNo);
             $('#purchaseDate').val(purchaseDate);
-            $('#warranty').val(warranty);
-            $('#dateEncoded').val(dateEncoded);
-            $('#dealersPrice').val(dealerPrice);
-            $('#srp').val(srp);
-            $('#quantity').val(quantity);
-            $('#totalPrice').val(totalPrice);
-            $('#totalSRP').val(totalSRP);
-            $('#mpi').val(mpi);
-            $('#totalmarkup').val(totalMarkup);
+        $('#warranty').val(warranty);
+        $('#dateEncoded').val(dateEncoded);
+        $('#dealersPrice').val(dealerPrice);
+        $('#srp').val(srp);
+        $('#quantity').val(quantity);
+        $('#totalPrice').val(totalPrice);
+        $('#totalSRP').val(totalSRP);
+        $('#mpi').val(mpi);
+        $('#totalmarkup').val(totalMarkup);
 
-            Compute();
+        Compute();
 
-            $('#inventoryinForm input:not([readonly]), #inventoryinForm select, #inventoryinForm textarea').prop('disabled', true);
-            $('#editBtn').prop('hidden', false).prop('disabled', false).removeAttr('hidden').removeAttr('disabled');
+        $('#inventoryinForm input:not([readonly]), #inventoryinForm select, #inventoryinForm textarea').prop('disabled', true);
+        $('#editBtn').prop('hidden', false).prop('disabled', false).removeAttr('hidden').removeAttr('disabled');
             $('#save').prop('hidden', true).attr('hidden','hidden');
             $('#cancel').prop('hidden', false).prop('disabled', false).removeAttr('hidden').removeAttr('disabled');
             $('#addNew').prop('hidden', true).attr('hidden','hidden');
@@ -401,9 +624,40 @@ $(document).ready(function() {
             $('#dataInvTbl').DataTable().search(v).draw();
         }
         if (invRefreshTimer) { clearInterval(invRefreshTimer); invRefreshTimer = null; }
-        if (v === '') {
-            LoadDataInventory();
-            invRefreshTimer = setInterval(function(){ LoadDataInventory(); }, 30000);
+        // Disable periodic auto-refresh to reduce lag; manual reload via actions
+        // if (v === '') { LoadDataInventory(); }
+    });
+
+    $('#dealersPrice, #srp, #quantity').on('input', function() {
+        var val = $(this).val();
+        // Allow numbers, dots, and commas only
+        var clean = val.replace(/[^0-9.,]/g, '');
+        if (val !== clean) {
+            $(this).val(clean);
+        }
+        Compute(); 
+    });
+
+    $('#dealersPrice, #srp, #quantity').on('blur', function() {
+        formatInput(this);
+        Compute();
+    });
+
+    $('#serialNo').on('input', function() {
+        var val = $(this).val();
+        // Allow numbers and dashes only
+        var clean = val.replace(/[^0-9-]/g, '');
+        if (val !== clean) {
+            $(this).val(clean);
+        }
+    });
+
+    $('#warranty').on('input', function() {
+        var val = $(this).val();
+        // Allow alphanumeric, spaces, and dashes
+        var clean = val.replace(/[^a-zA-Z0-9\s-]/g, '');
+        if (val !== clean) {
+            $(this).val(clean);
         }
     });
 
@@ -419,29 +673,47 @@ function Initialize(){
         },
         success:function(response){
             $("#branch").empty().append(`<option value="" disabled selected>Select</option>`);
+            var addedBranches = new Set();
+            
+            // Add "HEAD OFFICE" first if not already present in the loop later (or force it here)
+            // But usually we just want unique values. 
+            
             $.each(response.BRANCH,function(key,value){
+                var b = (value["ItemName"] || '').trim();
+                var bUpper = b.toUpperCase();
+                if (b && !addedBranches.has(bUpper)) {
+                    addedBranches.add(bUpper);
                     $("#branch").append(`
-                        <option value="${value["ItemName"]}">
-                            ${value["ItemName"]}
+                        <option value="${b}">
+                            ${b}
                         </option>
                     `);
+                }
             });
-            if ($("#branch option").filter(function(){ return $(this).text().toUpperCase() === "HEAD OFFICE"; }).length === 0) {
-                $("#branch").append(`<option value="HEAD OFFICE">HEAD OFFICE</option>`);
-            }
+            
+            // Only add default HEAD OFFICE if it wasn't in the database response
+            //if (!addedBranches.has("HEAD OFFICE")) {
+                //$("#branch").append(`<option value="HEAD OFFICE">HEAD OFFICE</option>`);
+            //}
 
             $("#type").empty().append(`<option value="" disabled selected>Select</option>`);
+            var addedTypes = new Set();
             $.each(response.PRODTYPE,function(key,value){
+                var t = (value["Type"] || '').trim();
+                var tUpper = t.toUpperCase();
+                if (t && !addedTypes.has(tUpper)) {
+                    addedTypes.add(tUpper);
                     $("#type").append(`
-                        <option value="${value["Type"]}">
-                            ${value["Type"]}
+                        <option value="${t}">
+                            ${t}
                         </option>
                     `);
+                }
             });
-            if ($("#type option").filter(function(){ return $(this).text().toUpperCase() === "WITH VAT"; }).length === 0) {
+            if (!addedTypes.has("WITH VAT")) {
                 $("#type").append(`<option value="WITH VAT">WITH VAT</option>`);
             }
-            if ($("#type option").filter(function(){ return $(this).text().toUpperCase() === "NON-VAT"; }).length === 0) {
+            if (!addedTypes.has("NON-VAT")) {
                 $("#type").append(`<option value="NON-VAT">NON-VAT</option>`);
             }
 
@@ -462,7 +734,27 @@ function Initialize(){
             };
 
             $('#purchaseDate').datetimepicker(options);
-            $('#dateEncoded').datetimepicker(options);
+            // Removed dateEncoded picker as requested
+            
+            // Initialize Date Filters for Data Inventory
+            var filterOptions = {
+                timepicker: false,
+                datepicker: true,
+                format: 'm/d/Y',
+                closeOnDateSelect: true,
+                scrollMonth: false,
+                scrollInput: false
+            };
+            $('#filterDateFrom').datetimepicker(filterOptions);
+            $('#filterDateTo').datetimepicker(filterOptions);
+            
+            // Trigger redraw on date change
+            $('#filterDateFrom, #filterDateTo').on('change', function(){
+                if ($.fn.DataTable.isDataTable('#dataInvTbl')) {
+                    $('#dataInvTbl').DataTable().draw();
+                }
+            });
+
             $('#purchaseDate').on('change', function(){
                 var val = $(this).val();
                 if (val) {
@@ -501,12 +793,26 @@ function Initialize(){
                 $("#type").val(defaultType);
                 LoadProdCateg(defaultType);
             }
+            
+            // Strictly disable all inputs initially to prevent editing before clicking New/Edit
+            $('#inventoryinForm input, #inventoryinForm select, #inventoryinForm textarea').prop('disabled', true);
+            // Explicitly disable Select2 dropdowns if they exist
+            $('#category').prop('disabled', true);
+            $('#product').prop('disabled', true);
+            $('#supplier').prop('disabled', true);
         }, 
     })
 }
 
 function InitializeDataTable() {
+    // If already initialized, just set the variable and return
+    if ($.fn.DataTable.isDataTable('#itemTbl')) {
+        itemTbl = $('#itemTbl').DataTable();
+        return;
+    }
+    
     itemTbl = $('#itemTbl').DataTable({
+        destroy: true,
         searching:false,
         ordering:false,
         info:false,
@@ -554,6 +860,15 @@ function InitializeDataTable() {
     });
 }
 
+function getSortableDate(dateStr) {
+    if (!dateStr) return '';
+    var parts = dateStr.split('/');
+    if (parts.length === 3) {
+        return parts[2] + parts[0].padStart(2, '0') + parts[1].padStart(2, '0');
+    }
+    return '';
+}
+
 function LoadDataInventory(){
     $.ajax({
         url:"../../routes/inventorymanagement/incominginventory.route.php",
@@ -565,8 +880,13 @@ function LoadDataInventory(){
             // no-op; we'll manage table instance in success
         },
         success:function(response){
+            console.log("Inventory load response:", response);
+            if (!response || !response.DATAINV) {
+                console.error("Invalid response structure:", response);
+                return;
+            }
 
-            if (response.DATAINVSINO.length > 0) {
+            if (response.DATAINVSINO && response.DATAINVSINO.length > 0) {
                 DataInvSINo = response.DATAINVSINO[0]['SINo'];
             }
 
@@ -627,6 +947,15 @@ function LoadDataInventory(){
                 dt.clear();
                 dt.rows.add(rows).draw(false);
                 dt.search('').draw(false);
+                console.log("DataTable updated with " + rows.length + " rows");
+                // Try to focus last saved/updated row after refresh
+                try {
+                    var k = JSON.parse(localStorage.getItem('incoming_last_saved_key') || '{}');
+                    if (k && (k.serial || k.si || k.product)) {
+                        focusRowByKeys(dt, k.serial, k.si, k.product);
+                        localStorage.removeItem('incoming_last_saved_key');
+                    }
+                } catch(e){}
             } else {
                 // Fallback: render without DataTables
                 $("#dataInvList").html(html);
@@ -634,28 +963,45 @@ function LoadDataInventory(){
                     dataInvTbl = $('#dataInvTbl').DataTable({
                         searching: true,
                         dom: 'lrtip',
-                        ordering: false,
+                        ordering: true,
+                        order: [[ 9, 'desc' ]],
                         info: true,
                         paging: true,
-                        pageLength: 50,
+                        pageLength: 8
+                    ,
                         deferRender: true,
-                        stateSave: true,
+                        stateSave: false,
                         lengthChange: false,
-                        scrollY: '400px',
+                        // scrollY: ($('#inventoryinForm').closest('.shadow').height() - 120) + 'px',
                         scrollX: true,
                         scrollCollapse: true,
                         responsive: false,
                         processing: true,
+                        columnDefs: [
+                            {
+                                targets: [7, 9],
+                                type: 'date',
+                                render: function(data, type, row) {
+                                    if (type === 'sort') {
+                                        return getSortableDate(data);
+                                    }
+                                    return data;
+                                }
+                            }
+                        ]
                     });
                     dataInvTbl.search('').draw(false);
+                    try {
+                        var k2 = JSON.parse(localStorage.getItem('incoming_last_saved_key') || '{}');
+                        if (k2 && (k2.serial || k2.si || k2.product)) {
+                            focusRowByKeys(dataInvTbl, k2.serial, k2.si, k2.product);
+                            localStorage.removeItem('incoming_last_saved_key');
+                        }
+                    } catch(e){}
                 }
             }
 
-            if (response.DATAINV.length > 0) {
-                $('#printBtn').prop('disabled', false);
-            } else {
-                $('#printBtn').prop('disabled', true);
-            }
+            // Removed print button toggling
         },
         error: function(xhr, status, error) {
             console.error("AJAX Error:", status, error);
@@ -666,6 +1012,7 @@ function LoadDataInventory(){
 }
 
 function LoadProdCateg (type){
+    if (!type) return;
     $.ajax({
         url:"../../routes/inventorymanagement/incominginventory.route.php",
         type:"POST",
@@ -674,31 +1021,80 @@ function LoadProdCateg (type){
         beforeSend:function(){
         },
         success:function(response){
-            $("#category").empty().append(`<option value="" disabled selected>Select</option>`);
+            var target = $("#category");
+            target.empty().append(`<option value="" disabled selected>Select</option>`);
+            
+            var addedCategs = new Set();
             $.each(response.PRODCATEG,function(key,value){
-                    $("#category").append(`
-                        <option value="${value["Category"]}">
-                            ${value["Category"]}
+                var c = (value["Category"] || '').trim();
+                var cUpper = c.toUpperCase();
+                if (c && !addedCategs.has(cUpper)) {
+                    addedCategs.add(cUpper);
+                    target.append(`
+                        <option value="${c}">
+                            ${c}
                         </option>
                     `);
+                }
             });
             var requiredCategories = ["Battery","Cable","Cartridge","Connector"];
             requiredCategories.forEach(function(c){
-                if ($("#category option").filter(function(){ return $(this).text() === c; }).length === 0) {
-                    $("#category").append(`<option value="${c}">${c}</option>`);
+                if (!addedCategs.has(c.toUpperCase())) {
+                    addedCategs.add(c.toUpperCase());
+                    target.append(`<option value="${c}">${c}</option>`);
                 }
             });
+            
+            // SECURITY FIX: Only enable if NOT in initial state (i.e., New or Edit is active)
+            // We check if 'addNew' is hidden. If hidden -> we are in Add/Edit/View mode -> enable.
+            // If visible -> we are in Initial mode -> disable.
+            if ($('#addNew').prop('hidden')) {
+                target.prop('disabled', false); 
+            } else {
+                target.prop('disabled', true);
+            }
+            
+            // Trigger change to update Select2
+            target.trigger('change');
 
-            // Product and Supplier are free-text inputs, do not append options
-            // $("#product").empty().append(`<option value="" disabled selected>Select</option>`);
-            // $("#supplier").empty().append(`<option value="" disabled selected>Select</option>`);
+            $("#product").empty().append(`<option value="" disabled selected>Select</option>`).trigger('change');
+            $("#supplier").empty().append(`<option value="" disabled selected>Select</option>`).trigger('change');
+            
+            // Restore Pending Category if exists
+            var pendingCategory = $('#type').data('pendingCategory');
+            var matched = false;
+            
+            if (pendingCategory) {
+                var targetStr = String(pendingCategory).trim().toUpperCase();
+                $("#category option").each(function(){
+                    if (String($(this).val()).trim().toUpperCase() === targetStr) {
+                        $("#category").val($(this).val()).trigger('change');
+                        matched = true;
+                        return false; 
+                    }
+                });
+                
+                if (matched) {
+                    $('#type').removeData('pendingCategory');
+                }
+            }
+            
+            if (!matched && pendingCategory) {
+                // If pending category exists but not in list, add it to preserve selection
+                target.append($('<option>', {value: pendingCategory, text: pendingCategory}));
+                target.val(pendingCategory).trigger('change');
+                $('#type').removeData('pendingCategory');
+            }
         }, 
     })
 }
 
 function LoadProdName (categ){
-    // Deprecated for free-text product
-    /*
+    if (!categ) {
+        $("#product").empty().append(`<option value="" disabled selected>Select</option>`).trigger('change');
+        $("#supplier").empty().append(`<option value="" disabled selected>Select</option>`).trigger('change');
+        return;
+    }
     $.ajax({
         url:"../../routes/inventorymanagement/incominginventory.route.php",
         type:"POST",
@@ -707,29 +1103,68 @@ function LoadProdName (categ){
         beforeSend:function(){
         },
         success:function(response){
-            $("#product").empty().append(`<option value="" disabled selected>Select</option>`);
+            var target = $("#product");
+            target.empty().append(`<option value="" disabled selected>Select</option>`);
             $.each(response.PRODUCT,function(key,value){
-                $("#product").append(
+                target.append(
                     $('<option></option>')
                         .val(value["Product"])
                         .text(value["Product"])
                 );
             });
             
-            $("#supplier").empty().append(`<option value="" disabled selected>Select</option>`);
-            var firstProduct = $("#product option:not([disabled])").eq(0).val();
-            if (firstProduct) {
-                $("#product").val(firstProduct);
-                LoadSupplier(firstProduct);
+            // Only enable product if category is enabled AND we are not in initial state
+            if (!$('#category').prop('disabled') && $('#addNew').prop('hidden')) {
+                target.prop('disabled', false);
+            } else {
+                target.prop('disabled', true);
+            }
+
+            $("#supplier").empty().append(`<option value="" disabled selected>Select</option>`).trigger('change');
+            
+            var pendingProduct = $('#category').data('pendingProduct');
+            var matched = false;
+            
+            if (pendingProduct) {
+                // Robust comparison: Trim and case-insensitive check
+                var targetStr = String(pendingProduct).trim().toUpperCase();
+                
+                $("#product option").each(function(){
+                    if (String($(this).val()).trim().toUpperCase() === targetStr) {
+                        $("#product").val($(this).val()).trigger('change');
+                        matched = true;
+                        return false; // break loop
+                    }
+                });
+                
+                if (matched) {
+                    $('#category').removeData('pendingProduct');
+                }
+            }
+            
+            if (!matched) {
+                if (pendingProduct) {
+                    // Fix: If pending product exists but not in list, add it to preserve selection
+                    // This prevents switching to the "first" product erroneously
+                    target.append($('<option>', {value: pendingProduct, text: pendingProduct}));
+                    target.val(pendingProduct).trigger('change');
+                    $('#category').removeData('pendingProduct');
+                } else {
+                    var firstProduct = $("#product option:not([disabled])").eq(0).val();
+                    if (firstProduct) {
+                        $("#product").val(firstProduct).trigger('change');
+                    }
+                }
             }
         }, 
     })
-    */
 }
 
 function LoadSupplier (productname){
-    // Deprecated for free-text supplier
-    /*
+    if (!productname) {
+         $("#supplier").empty().append(`<option value="" disabled selected>Select</option>`).trigger('change');
+         return;
+    }
     $.ajax({
         url:"../../routes/inventorymanagement/incominginventory.route.php",
         type:"POST",
@@ -738,25 +1173,63 @@ function LoadSupplier (productname){
         beforeSend:function(){
         },
         success:function(response){
-            $("#supplier").empty().append(`<option value="" disabled selected>Select</option>`);
+            var target = $("#supplier");
+            target.empty().append(`<option value="" disabled selected>Select</option>`);
             $.each(response.SUPPLIER,function(key,value){
-                $("#supplier").append(`
+                target.append(`
                     <option value="${value["Supplier"]}">
                         ${value["Supplier"]}
                     </option>
                 `);
             });
-            $('#supplier').off('change').on('change', function(){
+            
+            // Only enable supplier if product is enabled AND we are not in initial state
+            if (!$('#product').prop('disabled') && $('#addNew').prop('hidden')) {
+                target.prop('disabled', false);
+            } else {
+                target.prop('disabled', true);
+            }
+
+            $('#supplier').off('change.autofill').on('change.autofill', function(){
                 AutoFillPricing();
                 LoadSupplierSI();
             });
-            var firstSupplier = $("#supplier option:not([disabled])").eq(0).val();
-            if (firstSupplier) {
-                $("#supplier").val(firstSupplier).trigger('change');
+            
+            var pendingSupplier = $('#product').data('pendingSupplier');
+            var matched = false;
+            
+            if (pendingSupplier) {
+                // Robust comparison: Trim and case-insensitive check
+                var targetStr = String(pendingSupplier).trim().toUpperCase();
+                
+                $("#supplier option").each(function(){
+                    if (String($(this).val()).trim().toUpperCase() === targetStr) {
+                        $("#supplier").val($(this).val()).trigger('change');
+                        matched = true;
+                        return false; // break loop
+                    }
+                });
+                
+                if (matched) {
+                    $('#product').removeData('pendingSupplier');
+                }
+            }
+            
+            if (!matched) {
+                if (pendingSupplier) {
+                    // Fix: If pending supplier exists but not in list, add it
+                    target.append($('<option>', {value: pendingSupplier, text: pendingSupplier}));
+                    target.val(pendingSupplier).trigger('change');
+                    $('#product').removeData('pendingSupplier');
+                } else {
+                    var firstSupplier = $("#supplier option:not([disabled])").eq(0).val();
+                    if (firstSupplier) {
+                        $("#supplier").val(firstSupplier).trigger('change');
+                    }
+                }
             }
         }, 
     })
-    */
 }
 
 function LoadSupplierSI(){
@@ -842,123 +1315,44 @@ function Compute() {
     }
 }
 
-$('#addToList').on('click', function() {
-    console.log(DataInvSINo);
-    let branch = $('#branch').val();
-    let type = $('#type').val();
-    let categ = $('#category').val();
-    let product = $('#product').val();
-    let supplier = $('#supplier').val();
-    let supplierSI = $('#suppliersSI').val();
-    let serialNo = $('#serialNo').val(); 
-    let purchaseDate = $('#purchaseDate').val();
-    let warranty = $('#warranty').val();
-    let imageName = $('#imageName').val();
-    let dateEncoded = $('#dateEncoded').val();
-    let dealerPrice = $('#dealersPrice').val();
-    let srp = $('#srp').val();
-    let quantity = $('#quantity').val();
-    let totalPrice = $('#totalPrice').val();
-    let totalSRP = $('#totalSRP').val();
-    let mpi = $('#mpi').val();
-    let totalMarkup = $('#totalmarkup').val();
-
-    if (branch == null || type == null || categ == null || product == null || supplier == null || supplierSI == "" || serialNo == "" || purchaseDate == "" || warranty == "" || dateEncoded == "" || supplierSI == "" || dealerPrice == "" || srp == "" || quantity == "") {
-        Swal.fire({
-            icon: 'warning',
-            text: 'Please enter required details.',
-        });
-        return;
-    }
-
-    var rowData = [
-        product,
-        serialNo,
-        warranty,
-        dealerPrice,
-        srp,
-        quantity,
-        totalPrice,
-        totalSRP,
-        mpi,
-        totalMarkup,
-        branch,
-        type,
-        categ,
-        supplier,
-        supplierSI,
-        purchaseDate,
-        imageName,
-        dateEncoded,
-    ];
-    if (editingItemRow) {
-        itemTbl.row(editingItemRow).data(rowData).draw(false);
-        editingItemRow = null;
-    } else {
-        itemTbl.row.add(rowData).draw(false);
-    }
-
-    $('#suppliersSI').prop('disabled',true);
-    try { localStorage.setItem('incoming_itemTbl', JSON.stringify(itemTbl.rows().data().toArray())); } catch(e) {}
-
-});
-
-$('#addNew').on('click', function() {
-    $('#branch').prop('disabled', false);
-    $('#type').prop('disabled', false);
-    $('#category').prop('disabled', false);
-    $('#product').prop('disabled', false);
-    $('#supplier').prop('disabled', false);
-    $('#suppliersSI').prop('disabled', false);
-    $('#serialNo').prop('disabled', false);   
-    $('#purchaseDate').prop('disabled', false);
-    $('#warranty').prop('disabled', false);
-    $('#imageName').prop('disabled', false);
-    $('#dateEncoded').prop('disabled', false);
-    $('#dealersPrice').prop('disabled', false);
-    $('#srp').prop('disabled', false);
-    $('#quantity').prop('disabled', false);
-    $('#totalPrice').prop('readonly', true);
-    $('#totalSRP').prop('readonly', true);
-    $('#mpi').prop('readonly', true);
-    $('#totalmarkup').prop('readonly', true);
-    $('#addNew').prop('hidden', true);
-    $('#addNew').prop('disabled', true);
-    $('#cancel').prop('hidden', false);
-    $('#cancel').prop('disabled', false);
-    $('#addToList').prop('hidden', false);
-    $('#addToList').prop('disabled', false);
-    $('#save').prop('hidden', false);
-    $('#save').prop('disabled', false);
-    // $("#CustomerInfoTbl tbody tr").removeClass("selected");
-    var now = new Date();
-    var mm = (now.getMonth() > 8) ? (now.getMonth() + 1) : ('0' + (now.getMonth() + 1));
-    var dd = (now.getDate() > 9) ? now.getDate() : ('0' + now.getDate());
-    var yyyy = now.getFullYear();
-    var todayStr = mm + '/' + dd + '/' + yyyy;
-    $('#dateEncoded').val(todayStr);
-    $('#purchaseDate').val(todayStr);
-    if ($("#branch option").filter(function(){ return $(this).text().toUpperCase() === "HEAD OFFICE"; }).length > 0) {
-        $('#branch').val("HEAD OFFICE");
-    }
-    if ($("#type option").filter(function(){ return $(this).text().toUpperCase() === "WITH VAT"; }).length > 0) {
-        $('#type').val("WITH VAT");
-        LoadProdCateg("WITH VAT");
-    }
-});
+// NOTE: Removed duplicate `#addToList` and `#addNew` click handlers (they were defined earlier
+// inside `$(document).ready(...)` and could cause conflicting button enabled/hidden states).
 
 function Cancel(){
+    console.log("Cancel() called"); 
+    
+    // --- 1. HIDE BUTTONS IMMEDIATELY (Before any potential errors) ---
+    // Using window.setButtonState if available, else manual fallback
+    if (typeof window.setButtonState === 'function') {
+        window.setButtonState('initial');
+    }
+    // Redundant force-hide to be absolutely sure
+    $('#cancel').hide().css('display', 'none');
+    $('#addToList').hide().css('display', 'none');
+    $('#save').hide().css('display', 'none');
+    $('#updateBtn').hide().css('display', 'none');
+    $('#editSaveBtn').hide().css('display', 'none');
+    $('#editBtn').hide().css('display', 'none');
+    $('#addNew').show().css('display', 'inline-block');
+
+    // --- 2. RESET VARIABLES ---
     isUpdate = false;
+    isSaving = false;
     editingItemRow = null;
+    SelectedFromList = "";
+    SelectedFromDataInv = "";
+    $("#DeleteFromListBtn").attr("disabled",true);
+    $("#DeleteFromDataInvBtn").attr("disabled",true);
+
+    // --- 3. CLEAR FORM ---
     $('#branch').prop('disabled', true).val('');
     $('#type').prop('disabled', true).val('');
-    $('#category').prop('disabled', true).val('');
-    $('#product').prop('disabled', true).val('');
-    $('#supplier').prop('disabled', true).val('');
-    $("#category").empty().append(`<option value="" disabled selected>Select</option>`);
-    // Product and Supplier are inputs, do not append options
-    // $("#product").empty().append(`<option value="" disabled selected>Select</option>`);
-    // $("#supplier").empty().append(`<option value="" disabled selected>Select</option>`);
+    
+    // Clear Select2 Dropdowns properly
+    $('#category').empty().append('<option value="" disabled selected>Select</option>').trigger('change').prop('disabled', true);
+    $('#product').empty().append('<option value="" disabled selected>Select</option>').trigger('change').prop('disabled', true);
+    $('#supplier').empty().append('<option value="" disabled selected>Select</option>').trigger('change').prop('disabled', true);
+    
     $('#suppliersSI').prop('disabled', true).val('');
     $('#serialNo').prop('disabled', true).val('');
     $('#purchaseDate').prop('disabled', true).val('');
@@ -972,16 +1366,21 @@ function Cancel(){
     $('#totalSRP').prop('readonly', true).val('');
     $('#mpi').prop('readonly', true).val('');
     $('#totalmarkup').prop('readonly', true).val('');
-    $('#addNew').prop('hidden', false).prop('disabled', false);
-    $('#cancel').prop('hidden', true).prop('disabled', true);
-    $('#addToList').prop('hidden', true).prop('disabled', true);
-    $('#save').prop('hidden', true).prop('disabled', true);
-    $('#editBtn').prop('hidden', true).prop('disabled', true);
+    
+    // Disable all inputs again
+    $('#inventoryinForm input, #inventoryinForm select, #inventoryinForm textarea').prop('disabled', true);
+    
+    // FIX: Removed lockFormInputs(true) call because it is not globally defined and causes a crash
+    // The line above ($('#inventoryinForm input...').prop('disabled', true)) already covers it.
+    
+    // Reset DataTables Selection
+    if ($.fn.DataTable.isDataTable('#dataInvTbl')) {
+        $('#dataInvTbl').DataTable().rows('.selected').nodes().each((row) => { row.classList.remove('selected'); });
+    }
+    
     // $("#CustomerInfoTbl tbody tr").removeClass("selected");
     try { localStorage.removeItem('incoming_itemTbl'); } catch(e) {}
 }
-
- 
 
 function DeleteFromDataInv(){
     if  (SelectedFromDataInv != "") {
@@ -1014,7 +1413,7 @@ function DeleteFromDataInv(){
                         text: result.value.MESSAGE,
                     });
                     LoadDataInventory();
-                    // Cancel();
+                    Cancel();
                     SelectedFromDataInv = "";
                     $("#DeleteFromDataInvBtn").attr("disabled",true);
 
@@ -1036,7 +1435,17 @@ function DeleteFromDataInv(){
     }
 }
 
- 
+function ClearFilter() {
+    $('#filterDateFrom').val('');
+    $('#filterDateTo').val('');
+    $('#searchDataInv').val('');
+    
+    if ($.fn.DataTable.isDataTable('#dataInvTbl')) {
+        var table = $('#dataInvTbl').DataTable();
+        table.search('').draw();
+    }
+}
+
 
 function DeleteFromList(){
     if  (SelectedFromList != "") {
@@ -1055,26 +1464,69 @@ function DeleteFromList(){
 
 function Save(){
     console.log("Save clicked");
-    $('#printBtn').prop('disabled', false);
-
-    if (!$.fn.DataTable.isDataTable('#itemTbl')) {
-         Swal.fire("Error", "Item table not initialized yet. Please refresh.", "error");
-         return;
+    incomingDebugLog("Save() clicked", {
+        isSaving: isSaving,
+        isUpdate: isUpdate,
+        SelectedFromDataInv: (SelectedFromDataInv !== ""),
+        orig: {si: origSIno, serial: origSerial, product: origProduct}
+    });
+    if (isSaving) {
+        // Avoid "dead button" feel if something previously failed to reset state
+        try { Swal.fire({icon:'info', title:'Please wait', text:'A save/update is still being processed.'}); } catch(e){}
+        return;
     }
+    isSaving = true;
+    $('#save, #updateBtn, #editSaveBtn').prop('disabled', true);
+    // Watchdog: if server hangs, unblock UI so you can retry and we can see logs.
+    try {
+        if (window._incomingSaveWatchdog) { clearTimeout(window._incomingSaveWatchdog); }
+        window._incomingSaveWatchdog = setTimeout(function(){
+            if (isSaving) {
+                incomingDebugLog("WATCHDOG fired (still saving after 60s) - unlocking UI");
+                isSaving = false;
+                try { $('#save, #updateBtn, #editSaveBtn').prop('disabled', false); } catch(e){}
+                try { Swal.fire({icon:'warning', title:'Request timeout', text:'No server response. Open DevTools → Network/Console for details.'}); } catch(e){}
+            }
+        }, 60000);
+    } catch(e){}
+
+    try {
+        if (!$.fn.DataTable.isDataTable('#itemTbl')) {
+             console.log("Item table not initialized. Attempting to initialize...");
+             InitializeDataTable();
+        }
+
+        if (!$.fn.DataTable.isDataTable('#itemTbl')) {
+             Swal.fire("Error", "Item table initialization failed (Code: DT-SAVE-FAIL). Please refresh.", "error");
+             isSaving = false;
+             $('#save, #updateBtn, #editSaveBtn').prop('disabled', false);
+             return;
+        }
+
+        if (!itemTbl) {
+            itemTbl = $('#itemTbl').DataTable();
+        }
 
     // Save the currently edited item from itemTbl directly to DB
     if (editingItemRow) {
-        let branch = $('#branch').val();
-        let type = $('#type').val();
-        let categ = $('#category').val();
-        let product = $('#product').val();
-        let supplier = $('#supplier').val();
+        let branch = String($('#branch').val()||'').toUpperCase();
+        let type = String($('#type').val()||'').toUpperCase();
+        let categ = String($('#category').val()||'').toUpperCase();
+        let product = String($('#product').val()||'').toUpperCase();
+        let supplier = String($('#supplier').val()||'').toUpperCase();
         let supplierSI = $('#suppliersSI').val();
-        let serialNo = $('#serialNo').val(); 
+        let serialNo = String($('#serialNo').val()||'').toUpperCase();
         let purchaseDate = $('#purchaseDate').val();
-        let warranty = $('#warranty').val();
+        let warranty = String($('#warranty').val()||'').toUpperCase();
         let imageName = $('#imageName').val();
-        let dateEncoded = $('#dateEncoded').val();
+        
+        // Auto-calculate dateEncoded: Current date for new items
+        var now = new Date();
+        var mm = (now.getMonth() > 8) ? (now.getMonth() + 1) : ('0' + (now.getMonth() + 1));
+        var dd = (now.getDate() > 9) ? now.getDate() : ('0' + now.getDate());
+        var yyyy = now.getFullYear();
+        let dateEncoded = mm + '/' + dd + '/' + yyyy;
+        
         let dealerPrice = $('#dealersPrice').val();
         let srp = $('#srp').val();
         let quantity = $('#quantity').val();
@@ -1085,8 +1537,33 @@ function Save(){
 
         if (branch == null || type == null || categ == null || product == null || supplier == null || supplierSI == "" || serialNo == "" || purchaseDate == "" || warranty == "" || dateEncoded == "" || dealerPrice == "" || srp == "" || quantity == "") {
             Swal.fire({ icon:'warning', text:'Please enter required details.' });
+            isSaving = false;
+            $('#save, #updateBtn, #editSaveBtn').prop('disabled', false);
             return;
         }
+
+        // Prevent duplicate by checking existing rows
+        try {
+            if ($.fn.DataTable && $.fn.DataTable.isDataTable('#dataInvTbl')) {
+                var dt = $('#dataInvTbl').DataTable();
+                var exists = false;
+                dt.rows().every(function(){
+                    var r = this.data();
+                    var dsi = String(r[0]||'').trim().toUpperCase();
+                    var dserial = String(r[1]||'').trim().toUpperCase();
+                    var dprod = String(r[2]||'').trim().toUpperCase();
+                    if ((supplierSI && dsi === String(supplierSI).toUpperCase()) &&
+                        (serialNo && dserial === serialNo) &&
+                        (product && dprod === product)) { exists = true; return false; }
+                });
+                if (exists) {
+                    isSaving = false;
+                    $('#save, #updateBtn, #editSaveBtn').prop('disabled', false);
+                    Swal.fire({icon:'warning',title:'Duplicate',text:'This item already exists in inventory.'});
+                    return;
+                }
+            }
+        } catch(e){}
 
         let formData = new FormData();
         formData.append("action", "SaveSingle");
@@ -1129,7 +1606,7 @@ function Save(){
                         var msg = (xhr && xhr.responseText) ? xhr.responseText : (error || status);
                         Swal.showValidationMessage(`Request failed: ${msg}`);
                     },
-                });
+                }).then(function(resp){ return resp; });
             },
         }).then(function(result) {
             if (result.isConfirmed) {
@@ -1147,35 +1624,51 @@ function Save(){
                         try {
                             if ($.fn.DataTable && $.fn.DataTable.isDataTable('#dataInvTbl')) {
                                 var dt = $('#dataInvTbl').DataTable();
-                                dt.search(savedSerial || savedSINo || savedProduct || '').draw(false);
-                                var cnt = dt.rows({search:'applied'}).count();
-                                if (cnt === 0) {
-                                    Swal.fire({icon:'info',title:'Updated, but not visible',text:'The updated row may be on a different page. The table has been refreshed.'});
-                                }
+                                // Persist keys so LoadDataInventory can focus after full refresh
+                                localStorage.setItem('incoming_last_saved_key', JSON.stringify({serial: savedSerial, si: savedSINo, product: savedProduct}));
+                                // Try immediate focus without waiting a second refresh
+                                focusRowByKeys(dt, savedSerial, savedSINo, savedProduct);
                             }
                         } catch(e){}
                         Cancel();
                     }, 400);
+                    isSaving = false;
                 } else {
                     Swal.fire("Error", result.value.MESSAGE, "error");
+                    isSaving = false;
+                    $('#save, #updateBtn, #editSaveBtn').prop('disabled', false);
                 }                
+            } else {
+                isSaving = false;
+                $('#save, #updateBtn, #editSaveBtn').prop('disabled', false);
             }
         });
         return;
     }
 
     if (isUpdate) {
-        let branch = $('#branch').val();
-        let type = $('#type').val();
-        let categ = $('#category').val();
-        let product = $('#product').val();
-        let supplier = $('#supplier').val();
+        let branch = String($('#branch').val()||'').toUpperCase();
+        let type = String($('#type').val()||'').toUpperCase();
+        let categ = String($('#category').val()||'').toUpperCase();
+        let product = String($('#product').val()||'').toUpperCase();
+        let supplier = String($('#supplier').val()||'').toUpperCase();
         let supplierSI = $('#suppliersSI').val();
-        let serialNo = $('#serialNo').val(); 
+        let serialNo = String($('#serialNo').val()||'').toUpperCase();
         let purchaseDate = $('#purchaseDate').val();
-        let warranty = $('#warranty').val();
+        let warranty = String($('#warranty').val()||'').toUpperCase();
         let imageName = $('#imageName').val();
-        let dateEncoded = $('#dateEncoded').val();
+        
+        // Use preserved Date Encoded if available (from database), otherwise fallback to current date (though update usually implies existing)
+        let dateEncoded = $('#inventoryinForm').data('originalDateEncoded');
+        if (!dateEncoded) {
+             // Fallback if missing
+            var now = new Date();
+            var mm = (now.getMonth() > 8) ? (now.getMonth() + 1) : ('0' + (now.getMonth() + 1));
+            var dd = (now.getDate() > 9) ? now.getDate() : ('0' + now.getDate());
+            var yyyy = now.getFullYear();
+            dateEncoded = mm + '/' + dd + '/' + yyyy;
+        }
+        
         let dealerPrice = $('#dealersPrice').val();
         let srp = $('#srp').val();
         let quantity = $('#quantity').val();
@@ -1183,6 +1676,37 @@ function Save(){
         let totalSRP = $('#totalSRP').val();
         let mpi = $('#mpi').val();
         let totalMarkup = $('#totalmarkup').val();
+
+        // Prevent duplicate by checking existing rows (exclude the row currently being updated)
+        try {
+            if ($.fn.DataTable && $.fn.DataTable.isDataTable('#dataInvTbl')) {
+                var dt = $('#dataInvTbl').DataTable();
+                var exists = false;
+                var origSI = String(origSIno || '').trim().toUpperCase();
+                var origSer = String(origSerial || '').trim().toUpperCase();
+                var origProd = String(origProduct || '').trim().toUpperCase();
+                dt.rows().every(function(){
+                    var r = this.data();
+                    var dsi = String(r[0]||'').trim().toUpperCase();
+                    var dserial = String(r[1]||'').trim().toUpperCase();
+                    var dprod = String(r[2]||'').trim().toUpperCase();
+                    // Skip the current record (otherwise it always "duplicates" itself)
+                    if (origSI && origSer && origProd &&
+                        dsi === origSI && dserial === origSer && dprod === origProd) {
+                        return;
+                    }
+                    if ((supplierSI && dsi === String(supplierSI).toUpperCase()) &&
+                        (serialNo && dserial === serialNo) &&
+                        (product && dprod === product)) { exists = true; return false; }
+                });
+                if (exists) {
+                    isSaving = false;
+                    $('#save, #updateBtn, #editSaveBtn').prop('disabled', false);
+                    Swal.fire({icon:'warning',title:'Duplicate',text:'This item already exists in inventory.'});
+                    return;
+                }
+            }
+        } catch(e){}
 
         let formData = new FormData();
         formData.append("action", "UpdateInventory");
@@ -1216,8 +1740,13 @@ function Save(){
             icon: 'info',
             title: 'Update product details?',
             showCancelButton: true,
+            showLoaderOnConfirm: true,
             confirmButtonText: 'Yes, update!',
             preConfirm: function() {
+                incomingDebugLog("UpdateInventory preConfirm()", {
+                    supplierSI: supplierSI, serialNo: serialNo, product: product,
+                    origSIno: origSIno, origSerial: origSerial, origProduct: origProduct
+                });
                 return $.ajax({
                     url: "../../routes/inventorymanagement/incominginventory.route.php",
                     type: "POST",
@@ -1225,21 +1754,50 @@ function Save(){
                     dataType: 'JSON',
                     processData: false,
                     contentType: false,
+                    timeout: 20000,
                     error: function(xhr, status, error) {
                         var msg = (xhr && xhr.responseText) ? xhr.responseText : (error || status);
+                        incomingDebugLog("UpdateInventory ajax error", {
+                            status: status,
+                            error: error,
+                            http: xhr ? xhr.status : 0,
+                            resp: (xhr && xhr.responseText) ? String(xhr.responseText).slice(0, 500) : ""
+                        });
                         Swal.showValidationMessage(`Request failed: ${msg}`);
                     },
+                }).then(function(resp){
+                    incomingDebugLog("UpdateInventory ajax success", resp);
+                    try { if (window._incomingSaveWatchdog) { clearTimeout(window._incomingSaveWatchdog); } } catch(e){}
+                    return resp;
                 });
             },
         }).then(function(result) {
+            incomingDebugLog("UpdateInventory swal result", (result && result.value) ? result.value : result);
             if (result.isConfirmed) {
                 if (result.value.STATUS == 'success') {
                     Swal.fire("Success", result.value.MESSAGE, "success");
+                    // Persist keys so `LoadDataInventory()` can focus the updated row after refresh
+                    try { localStorage.setItem('incoming_last_saved_key', JSON.stringify({serial: serialNo, si: supplierSI, product: product})); } catch(e){}
+                    // Refresh the "original keys" so repeated updates (without reselect) still work
+                    origSIno = supplierSI;
+                    origSerial = serialNo;
+                    origProduct = product;
+                    // Reset saving state BEFORE doing anything else that might throw
+                    isSaving = false;
+                    $('#save, #updateBtn, #editSaveBtn').prop('disabled', false);
+                    try { if (window._incomingSaveWatchdog) { clearTimeout(window._incomingSaveWatchdog); } } catch(e){}
                     LoadDataInventory();
                     Cancel();
                 } else {
                     Swal.fire("Error", result.value.MESSAGE, "error");
+                    isSaving = false;
+                    $('#save, #updateBtn, #editSaveBtn').prop('disabled', false);
+                    try { if (window._incomingSaveWatchdog) { clearTimeout(window._incomingSaveWatchdog); } } catch(e){}
                 }                
+            } else {
+                isSaving = false;
+                $('#save, #updateBtn, #editSaveBtn').prop('disabled', false);
+                try { if (window._incomingSaveWatchdog) { clearTimeout(window._incomingSaveWatchdog); } } catch(e){}
             }
         });
         return;
@@ -1247,17 +1805,24 @@ function Save(){
 
     if(itemTbl.rows().count() === 0){
         // When Item List is empty, this will encode the details in Particulars
-        let branch = $('#branch').val();
-        let type = $('#type').val();
-        let categ = $('#category').val();
-        let product = $('#product').val();
-        let supplier = $('#supplier').val();
+        let branch = String($('#branch').val()||'').toUpperCase();
+        let type = String($('#type').val()||'').toUpperCase();
+        let categ = String($('#category').val()||'').toUpperCase();
+        let product = String($('#product').val()||'').toUpperCase();
+        let supplier = String($('#supplier').val()||'').toUpperCase();
         let supplierSI = $('#suppliersSI').val();
-        let serialNo = $('#serialNo').val(); 
+        let serialNo = String($('#serialNo').val()||'').toUpperCase();
         let purchaseDate = $('#purchaseDate').val();
-        let warranty = $('#warranty').val();
+        let warranty = String($('#warranty').val()||'').toUpperCase();
         let imageName = $('#imageName').val();
-        let dateEncoded = $('#dateEncoded').val();
+        
+        // Auto-calculate dateEncoded: Current date for new items
+        var now = new Date();
+        var mm = (now.getMonth() > 8) ? (now.getMonth() + 1) : ('0' + (now.getMonth() + 1));
+        var dd = (now.getDate() > 9) ? now.getDate() : ('0' + now.getDate());
+        var yyyy = now.getFullYear();
+        let dateEncoded = mm + '/' + dd + '/' + yyyy;
+        
         let dealerPrice = $('#dealersPrice').val();
         let srp = $('#srp').val();
         let quantity = $('#quantity').val();
@@ -1271,6 +1836,8 @@ function Save(){
                 icon: 'warning',
                 text: 'Please enter required details.',
             });
+            isSaving = false;
+            $('#save, #updateBtn, #editSaveBtn').prop('disabled', false);
             return;
         }
 
@@ -1335,70 +1902,23 @@ function Save(){
                         title: "Success",
                         text: response.MESSAGE,
                     });
-                    var rowArr = [
-                        supplierSI,
-                        serialNo,
-                        product,
-                        supplier,
-                        categ,
-                        type,
-                        branch,
-                        purchaseDate,
-                        warranty,
-                        dateEncoded,
-                        quantity,
-                        dealerPrice,
-                        srp,
-                        totalPrice,
-                        totalSRP,
-                        mpi,
-                        totalMarkup,
-                        '', // VatSales client unknown
-                        '', // Vat client unknown
-                        '', // AmountDue client unknown
-                        imageName
-                    ];
-                    try {
-                        if ($.fn.DataTable && $.fn.DataTable.isDataTable('#dataInvTbl')) {
-                            var dt = $('#dataInvTbl').DataTable();
-                            dt.row.add(rowArr).draw(false);
-                            dt.search(serialNo || supplierSI || product || '').draw(false);
-                        } else {
-                            $("#dataInvList").prepend(`
-                                <tr>
-                                    <td>${supplierSI}</td>
-                                    <td>${serialNo}</td>
-                                    <td>${product}</td>
-                                    <td>${supplier}</td>
-                                    <td>${categ}</td>
-                                    <td>${type}</td>
-                                    <td>${branch}</td>
-                                    <td>${purchaseDate}</td>
-                                    <td>${warranty}</td>
-                                    <td>${dateEncoded}</td>
-                                    <td>${quantity}</td>
-                                    <td>${dealerPrice}</td>
-                                    <td>${srp}</td>
-                                    <td>${totalPrice}</td>
-                                    <td>${totalSRP}</td>
-                                    <td>${mpi}</td>
-                                    <td>${totalMarkup}</td>
-                                    <td></td>
-                                    <td></td>
-                                    <td></td>
-                                    <td>${imageName}</td>
-                                </tr>
-                            `);
-                        }
-                    } catch(e){}
+                    // Persist keys and reload from DB to guarantee server-computed fields (VAT, VatSales, AmountDue)
+                    try { localStorage.setItem('incoming_last_saved_key', JSON.stringify({serial: serialNo, si: supplierSI, product: product})); } catch(e){}
+                    LoadDataInventory();
                     Cancel();
+                    isSaving = false;
                 } else if (response && response.STATUS != 'success') {
                     Swal.fire({
                         icon: "error",
                         title: "Error",
                         text: response.MESSAGE || "Unknown error occurred",
                     });
+                    isSaving = false;
+                    $('#save, #updateBtn, #editSaveBtn').prop('disabled', false);
                 }                
+            } else {
+                isSaving = false;
+                $('#save, #updateBtn, #editSaveBtn').prop('disabled', false);
             }
         });
 
@@ -1453,76 +1973,85 @@ function Save(){
                     LoadDataInventory();
                     Cancel();
                     itemTbl.clear().draw(false);
+                    isSaving = false;
                 } else if (response && response.STATUS != 'success') {
                     Swal.fire({
                         icon: "error",
                         title: "Error",
                         text: response.MESSAGE || "Unknown error occurred",
                     });
+                    isSaving = false;
+                    $('#save, #updateBtn, #editSaveBtn').prop('disabled', false);
                 } else {
                      // Fallback for cases where response might not be structured as expected
                      // or if the AJAX failed silently but didn't trigger error callback
                      console.log("Unexpected response:", response);
+                     isSaving = false;
+                     $('#save, #updateBtn, #editSaveBtn').prop('disabled', false);
                 }               
+            } else {
+                isSaving = false;
+                $('#save, #updateBtn, #editSaveBtn').prop('disabled', false);
             }
         });
 
      }
+    } catch (err) {
+        console.error("Save() crashed:", err);
+        isSaving = false;
+        try { $('#save, #updateBtn, #editSaveBtn').prop('disabled', false); } catch(e){}
+        try { Swal.fire({icon:'error', title:'Update failed', text:(err && err.message) ? err.message : 'Unexpected error'}); } catch(e){}
+        return;
+    }
 }
 
-function PrintSupplierSalesInvoice(){
-    if(dataInvTbl.rows().count() === 0){
-        Swal.fire({
-            icon:'warning',
-            title: 'Nothing to print!',
-        });
-        return;
-    }
-    var Data = dataInvTbl.rows({search:'applied'}).data().toArray();
-    var printWin = window.open('about:blank');
-    if (!printWin) {
-        Swal.fire({icon:'warning',title:'Pop-up blocked',text:'Please allow pop-ups for this site.'});
-        return;
-    }
-    var formdata = new FormData();
-    formdata.append("action","PrintSupplierSalesInvoice");
-    formdata.append("DATA",JSON.stringify(Data));
-    $.ajax({
-        url: "../../routes/inventorymanagement/incominginventory.route.php",
-        type: "POST",
-        data:formdata,
-        processData:false,
-        cache:false,
-        contentType:false,
-        dataType:"JSON",
-        timeout: 30000,
-        beforeSend: function() {
-            $('#printBtn').prop('disabled', true);
-            $('#loading').show();
-        },
-        complete: function() {
-            $('#loading').hide();
-        },
-        success: function(response) {
-            if (response && response.STATUS === 'success') {
-                printWin.location = "../../routes/inventorymanagement/incominginventory.route.php?type=PrintSuppRcpt";
-                $('#printBtn').prop('disabled', false);
-                DataInvSINo = "";
-                LoadDataInventory();
-            } else {
-                try { printWin.close(); } catch(e){}
-                $('#printBtn').prop('disabled', false);
-                Swal.fire({icon:'error',title:'Print failed',text:(response && response.MESSAGE) ? response.MESSAGE : 'Unknown error'});
+function PrintSupplierSalesInvoice(){ return; }
+
+/**
+ * Focus and highlight a row in DataTables by keys (serial, si, product).
+ * Jumps to the correct page and scrolls the row into view.
+ */
+function focusRowByKeys(dt, serial, si, product){
+    try {
+        var pageInfo = dt.page.info();
+        var len = pageInfo.length || 50;
+        var targetIndex = -1;
+        dt.rows().every(function(rowIdx){
+            var data = this.data();
+            // data array indices follow DATAINV order:
+            // 0:SIno, 1:Serialno, 2:Product
+            var dsi = String(data[0]||'').trim();
+            var dserial = String(data[1]||'').trim();
+            var dprod = String(data[2]||'').trim();
+            
+            // Loose comparison to handle potential casing/whitespace issues
+            if ((serial && dserial.toUpperCase() === String(serial).toUpperCase()) &&
+                (si && dsi.toUpperCase() === String(si).toUpperCase()) &&
+                (product && dprod.toUpperCase() === String(product).toUpperCase())) {
+                targetIndex = rowIdx;
+                return false; // break
             }
-        },
-        error: function(xhr, status, error) {
-            try { printWin.close(); } catch(e){}
-            $('#printBtn').prop('disabled', false);
-            Swal.fire({icon:'error',title:'Print failed',text:error || status});
+        });
+        if (targetIndex >= 0) {
+            var pageIdx = Math.floor(targetIndex / len);
+            dt.page(pageIdx).draw(false);
+            var node = dt.row(targetIndex).node();
+            // Clear previous selections
+            dt.rows('.selected').nodes().each((row) => { row.classList.remove('selected'); });
+            $(node).addClass('selected');
+            if (node && node.scrollIntoView) {
+                node.scrollIntoView({behavior:'smooth', block:'center'});
+            }
+            return true;
+        } else {
+            // Fallback to search to narrow visible rows
+            dt.search(serial || si || product || '').draw(false);
+            return false;
         }
-    });
+    } catch(e){
+        return false;
+    }
 }
-
 function formatAmtVal(value) {
     // Remove any characters that are not digits, commas, or periods
     let cleanValue = value.toString().replace(/[^0-9.,]/g, '');
@@ -1567,14 +2096,3 @@ function formatInput(input) {
         input.value = '0.00'; // If empty or invalid, set input to empty
     }
 }
-    cleanValue = cleanValue.replace(/,/g, '');
-
-    if (cleanValue !== '') {
-        // Parse the cleaned value to a float and ensure two decimal places
-        let formattedValue = parseFloat(cleanValue).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-        // Set the formatted value back to the input field
-        input.value = formattedValue;
-    } else {
-        input.value = '0.00'; // If empty or invalid, set input to empty
-    }
-
