@@ -21,7 +21,7 @@
         <link rel="stylesheet" href="assets/datetimepicker/jquery.datetimepicker.css">
 
         <style>
-            span {
+            .content-inner span {
                 font-size: 11px;
             }
             .icon-xxl {
