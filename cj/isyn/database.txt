@@ -152,3 +152,290 @@ Consignment
 - The consignment process heavily relies on moving data from tbl_invlist (original stock) to tbl_invlistconsign (consignment stock).
 - The logic ensures that the quantity is deducted from the source branch ( tbl_invlist ) before being added to the consignment branch ( tbl_invlistconsign ).
 
+Order confirmation
+### Primary Order Confirmation Table
+- tbl_orderconfirmation
+  - Usage: The main table for storing confirmed order records.
+  - Operations: INSERT , SELECT
+  - Context: Records are inserted upon submission and retrieved for search and reporting (PDF generation).
+### Inventory Tables
+- tbl_invlist
+  - Usage: The master inventory list for standard items.
+  - Operations: SELECT , UPDATE
+  - Context: Used to load product details, check availability, and deduct stock quantity upon order submission.
+- tbl_invlistconsign
+  - Usage: Inventory list for consignment items.
+  - Operations: SELECT , UPDATE
+  - Context: Used similarly to tbl_invlist but for consignment stock (logic inferred from "isConsign" checks in the code).
+### Configuration & Helper Tables
+- tbl_configuration
+  - Usage: Stores system-wide settings, specifically the current Order Confirmation Number.
+  - Operations: SELECT , UPDATE
+  - Context: Used to generate the next unique OC Number ( CURRENTOCNO ).
+- tbl_sinumber
+  - Usage: Checks the Sales Invoice count for the current user.
+  - Operations: SELECT
+  - Context: Used during initialization to fetch user-specific SI counts.
+
+Cancel Consignment
+### Primary Inventory Tables
+- tbl_invlistconsign
+  - Usage: The main source of consignment inventory records to be displayed and cancelled.
+  - Operations: SELECT , DELETE
+  - Context: Used to populate dropdowns (Branch, Type, Category), search for products, and remove records upon cancellation.
+- tbl_invlistconsignhistory
+  - Usage: The archive table for cancelled or history consignment items.
+  - Operations: INSERT
+  - Context: When a consignment is cancelled, the record is copied here from tbl_invlistconsign before being deleted from the active list.
+### Note on Logic
+- The "Cancel Consignment" action effectively moves data from tbl_invlistconsign to tbl_invlistconsignhistory .
+- It does not appear to automatically return the stock to tbl_invlist (the main inventory) in this specific process file. It simply archives the consignment record.
+
+
+Inventory 
+### Primary Inventory Tables
+- tbl_invlist
+  - Usage: The main current inventory table.
+  - Operations: SELECT
+  - Context: Used for "CURRENT INVENTORY" reports and as a fallback source for branch/type lists.
+- tbl_inventoryin
+  - Usage: Records incoming inventory.
+  - Operations: SELECT
+  - Context: Used for "INCOMING INVENTORY" reports.
+- tbl_inventoryout
+  - Usage: Records outgoing inventory (sales).
+  - Operations: SELECT
+  - Context: Used for "OUTGOING INVENTORY" reports.
+- tbl_inventoryend
+  - Usage: Records ending inventory snapshots.
+  - Operations: SELECT
+  - Context: Used for "ENDING INVENTORY" reports.
+- tbl_inventorychecking
+  - Usage: Records previous inventory checks.
+  - Operations: SELECT
+  - Context: Used for "PREVIOUS INVENTORY" reports.
+### Consignment Tables
+- tbl_invlistconsign
+  - Usage: Current consignment inventory.
+  - Operations: SELECT
+  - Context: Used when filtering for "Consign Only" or mixed reports.
+- tbl_invconsignin
+  - Usage: Incoming consignment records.
+  - Operations: SELECT
+- tbl_invlistconsignend
+  - Usage: Ending consignment inventory snapshots.
+  - Operations: SELECT
+- tbl_invlistconsigchecking
+  - Usage: Previous consignment inventory checks.
+  - Operations: SELECT
+### Temporary & Helper Tables
+- tbl_invlisttemporary
+  - Usage: A temporary table used to aggregate data before displaying reports.
+  - Operations: DELETE , INSERT , SELECT
+  - Context: Cleared and repopulated dynamically based on the selected report type and filters.
+- tbl_transferproducttotals
+  - Usage: Tracks totals for transferred products.
+  - Operations: SELECT
+  - Context: Used when "Include Transfer Product" is selected.
+### Configuration Tables
+- tbl_maintenance
+  - Usage: Source for branch list ( ItemType='BRANCH' ).
+  - Operations: SELECT
+- TBL_DYNALISTS
+  - Usage: Defines dynamic column headers for list views.
+  - Operations: SELECT
+- tbl_prodtype
+  - Usage: Source for product types.
+  - Operations: SELECT
+- tbl_clientlist
+  - Usage: Source for customer types.
+  - Operations: SELECT
+- tbl_sinumber
+  - Usage: Source for SI counts.
+  - Operations: SELECT
+
+
+Close Transaction 
+### Primary Inventory Snapshot Tables
+- tbl_inventoryend
+  - Usage: Stores the "ending inventory" snapshot for standard items.
+  - Operations: DELETE (clean up existing snapshot for the date), INSERT (copy current inventory).
+  - Context: Data is copied from tbl_invlist into this table to freeze the state for the closing date.
+- tbl_invlistconsignend
+  - Usage: Stores the "ending inventory" snapshot for consignment items.
+  - Operations: DELETE , INSERT
+  - Context: Data is copied from tbl_invlistconsign into this table.
+### Source Inventory Tables
+- tbl_invlist
+  - Usage: The live current inventory for standard items.
+  - Operations: SELECT (used in INSERT INTO ... SELECT statement).
+  - Context: The source of truth for the snapshot.
+- tbl_invlistconsign
+  - Usage: The live current inventory for consignment items.
+  - Operations: SELECT
+  - Context: The source of truth for the consignment snapshot.
+### Configuration Tables
+- tbl_configuration
+  - Usage: Manages system status and dates.
+  - Operations: SELECT , UPDATE
+  - Context:
+    - Checks ConfigName = 'BALANCE' to see if transactions can be closed (Inventory Balance Status).
+    - Updates ConfigName = 'LASTCLOSINGDATE' to record when the last close occurred.
+
+
+Inventory Balancing
+### Inventory Movement Tables
+- tbl_invlist
+  - Usage: Represents the current live inventory state.
+  - Operations: SELECT (Sum of Quantity and TotalPrice).
+- tbl_inventoryend
+  - Usage: Represents the "previous month's" ending inventory.
+  - Operations: SELECT (Sum of Quantity and TotalPrice for a specific AsOf date).
+- tbl_inventoryin
+  - Usage: Tracks incoming inventory (additions).
+  - Operations: SELECT (Sum of Quantity and TotalPrice within the current month's date range).
+- tbl_inventoryout
+  - Usage: Tracks outgoing inventory (sales/deductions).
+  - Operations: SELECT (Sum of Quantity and TotalPrice within the current month's date range).
+- tbl_transferproducttotals
+  - Usage: Tracks stock transfers (both "TRANSFER" out and "RECEIVED" in).
+  - Operations: SELECT (Sum of TotalQuantity and TotalDP, filtered by TransferType ).
+- tbl_purchasereturned
+  - Usage: Tracks items returned to suppliers.
+  - Operations: SELECT (Sum of TotalQuantity and TotalPrice).
+### Price Adjustment Tables
+- tbl_srp_dp_producthistory
+  - Usage: Tracks changes in Dealer Price (DP).
+  - Operations: SELECT (Calculates the net impact of price changes on the total inventory value).
+### Configuration Tables
+- tbl_configuration
+  - Usage: Stores the balancing status ( BALANCE = 'YES'/'NO').
+  - Operations: UPDATE (Sets the status based on whether the calculated difference is zero).
+
+
+Paid Unpaid Items
+SOLO Coder
+
+Used 1 context
+
+Search Agent Find files related to "inventorybalancing" to identify backend logic
+
+Thought
+
+Search codebase for '**/inventorybalancing*.php'
+
+Thought
+
+I found the following file paths matching your request:
+
+- inventorybalancing.php
+- inventorybalancing.process.php
+- inventorybalancing.route.php
+
+pages\inventorymanagement\inventorybalancing.php
+
+process\inventorymanagement\inventorybalancing.process.php
+
+Based on the code analysis of inventorybalancing.php and its associated process file, here are the database tables used:
+
+### Inventory Movement Tables
+- tbl_invlist
+  - Usage: Represents the current live inventory state.
+  - Operations: SELECT (Sum of Quantity and TotalPrice).
+- tbl_inventoryend
+  - Usage: Represents the "previous month's" ending inventory.
+  - Operations: SELECT (Sum of Quantity and TotalPrice for a specific AsOf date).
+- tbl_inventoryin
+  - Usage: Tracks incoming inventory (additions).
+  - Operations: SELECT (Sum of Quantity and TotalPrice within the current month's date range).
+- tbl_inventoryout
+  - Usage: Tracks outgoing inventory (sales/deductions).
+  - Operations: SELECT (Sum of Quantity and TotalPrice within the current month's date range).
+- tbl_transferproducttotals
+  - Usage: Tracks stock transfers (both "TRANSFER" out and "RECEIVED" in).
+  - Operations: SELECT (Sum of TotalQuantity and TotalDP, filtered by TransferType ).
+- tbl_purchasereturned
+  - Usage: Tracks items returned to suppliers.
+  - Operations: SELECT (Sum of TotalQuantity and TotalPrice).
+### Price Adjustment Tables
+- tbl_srp_dp_producthistory
+  - Usage: Tracks changes in Dealer Price (DP).
+  - Operations: SELECT (Calculates the net impact of price changes on the total inventory value).
+### Configuration Tables
+- tbl_configuration
+  - Usage: Stores the balancing status ( BALANCE = 'YES'/'NO').
+  - Operations: UPDATE (Sets the status based on whether the calculated difference is zero).
+Code Reference:
+
+- inventorybalancing.process.php
+
+11:30
+akosioon4-star
+
+paidunpaiditems.php also this
+
+SOLO Coder
+
+Used 1 context
+
+Search Agent Find files related to "paidunpaiditems" to identify backend logic
+
+Thought
+
+Search codebase for '**/paidunpaiditems.php'
+
+Search codebase for '**/paidunpaiditems.process.php'
+
+Search codebase for '**/paidunpaiditems.route.php'
+
+Thought
+
+Here are the file paths for the requested files:
+
+- Page File : paidunpaiditems.php
+- Process File : paidunpaiditems.process.php
+- Route File : paidunpaiditems.route.php
+
+pages\inventorymanagement\paidunpaiditems.php
+
+process\inventorymanagement\paidunpaiditems.process.php
+
+Based on the code analysis of paidunpaiditems.php and its associated process file, here are the database tables used:
+
+### Primary Sales & Payment Table
+- tbl_inventoryout
+  - Usage: The central table for tracking sold items and their payment status.
+  - Operations: SELECT
+  - Context:
+    - Used to fetch items filtered by Status ('PAID' or 'UNPAID').
+    - Used to calculate totals (Price, SRP, Markup, Quantity).
+    - Used to aggregate data by Client ( Soldto ) for the "Client List" view.
+    - Used to fetch detailed item info for modals.
+### Note on Functionality
+- Unlike other inventory pages that move data between tables, this page is primarily a reporting dashboard .
+- It performs read-only operations ( SELECT ) to aggregate and display financial data based on the Status column in tbl_inventoryout .
+
+
+Dashboard/index 
+- tbl_invlist
+- tbl_inventoryin / tbl_inventoryout
+- tbl_transaction
+- tbl_users
+
+
+SI Setup 
+### Database Tables Used
+- tbl_sinumber
+  - Usage:
+    - Check Existence: SHOW TABLES LIKE 'tbl_sinumber'
+    - Read: SELECT SIcount FROM tbl_sinumber WHERE user = ?
+    - Create: CREATE TABLE IF NOT EXISTS tbl_sinumber ...
+    - Update: UPDATE tbl_sinumber SET SIcount=? ...
+    - Insert: INSERT INTO tbl_sinumber ...
+  - Purpose: Stores the current Sales Invoice (SI) count/sequence for each user to generate the next SI number automatically.
+
+
+Backup
+Nating 
+
+
