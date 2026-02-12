@@ -1,1 +1,19 @@
+ACASH
+tbl_books
+tbl_master_identities
+tbl_staging_transactions
 
+
+INVENTORY
+tbl_invlist
+tbl_inventoryin
+tbl_inventoryout
+tbl_invlistconsign
+tbl_invlistconsignhistory
+tbl_salesjournal
+tbl_prodtype
+tbl_maintenance_module
+tbl_configuration
+tbl_srp_dp_producthistory
+tbl_purchasereturned
+tbl_purchasereturnedtransaction
