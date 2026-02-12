@@ -1,1 +1,154 @@
+Incoming Inventory
+### Primary Inventory Tables
+- tbl_inventoryin
+  - Usage: The main table for storing incoming inventory records.
+  - Operations: SELECT , INSERT , UPDATE , DELETE
+  - Context: Used to load the data inventory list, check for duplicates, save new inventory items, and update existing records.
+- tbl_invlist
+  - Usage: Appears to be a secondary or history table for inventory items.
+  - Operations: SELECT , INSERT
+  - Context: Used as a fallback for loading product names/suppliers/pricing and is populated from tbl_inventoryin during the PrintSupplierSalesInvoice process.
+### Configuration & Dropdown Data
+- tbl_prodtype
+  - Usage: Source for product types, categories, and standardized product names.
+  - Operations: SELECT
+  - Context: Populates dropdowns for "Product Type", "Category", "Product Name", and "Supplier".
+- tbl_maintenance
+  - Usage: Configuration table.
+  - Operations: SELECT
+  - Context: Specifically used to fetch the list of branches ( ItemType='BRANCH' ).
+### Financial & Reporting Tables
+- tbl_purchasejournal
+  - Usage: Records financial journal entries for purchases.
+  - Operations: INSERT , UPDATE
+  - Context: Entries are created here when "PrintSupplierSalesInvoice" is executed.
+- tbl_supplier_info
+  - Usage: Stores detailed supplier information (TIN, Address).
+  - Operations: SELECT
+  - Context: Used to fetch supplier details to update the purchase journal.
+
+
+
+Outgoing Inventory 
+### Primary Inventory & Transaction Tables
+- tbl_inventoryout
+  - Usage: The final destination for all outgoing inventory records (sales).
+  - Operations: SELECT , INSERT
+  - Context: Records are moved here from tbl_transaction upon successful submission.
+- tbl_transaction
+  - Usage: A temporary holding table for items currently being added to the "Items List" (cart) before final submission.
+  - Operations: SELECT , INSERT , UPDATE , DELETE
+  - Context: Cleared for the specific user before loading a new list and after successful submission.
+- tbl_invlist
+  - Usage: The main master list of current inventory.
+  - Operations: SELECT , UPDATE , DELETE
+  - Context: Checked for stock availability and updated (quantity reduced) or deleted (if quantity becomes 0) upon sale.
+- tbl_prodhistory
+  - Usage: Archives items that have been fully sold out from tbl_invlist .
+  - Operations: INSERT
+  - Context: When an item's quantity in tbl_invlist reaches 0, it is moved here.
+### Consignment Tables
+- tbl_invlistconsign
+  - Usage: Inventory list specifically for consignment items.
+  - Operations: SELECT , UPDATE , DELETE
+  - Context: Similar to tbl_invlist but for consignment stock.
+- tbl_invlistconsignhistory
+  - Usage: Archives sold-out consignment items.
+  - Operations: INSERT
+  - Context: When consignment stock reaches 0, it is moved here.
+- tbl_transmittal
+  - Usage: Source for "Transmittal Search" functionality.
+  - Operations: SELECT
+  - Context: Allows users to find products based on transmittal records.
+### Configuration & Dropdown Data
+- tbl_sinumber
+  - Usage: Manages the auto-incrementing Sales Invoice (SI) number.
+  - Operations: SELECT , UPDATE , CREATE
+- tbl_prodtype
+  - Usage: Populates the "Type" dropdown.
+  - Operations: SELECT
+- tbl_maintenance
+  - Usage: Populates the "Branch" dropdowns.
+  - Operations: SELECT
+- tbl_clientlist
+  - Usage: Populates the "Customer Name" list.
+  - Operations: SELECT
+- tbl_barangays (or tbl_baranggays )
+  - Usage: Populates the Address dropdowns (Region, Province, City, Barangay).
+  - Operations: SELECT
+### Financial & Reporting Tables
+- tbl_salesjournal
+  - Usage: Records the financial summary of the sale (Gross Sales, VAT, Net Sales).
+  - Operations: INSERT
+- tbl_purchasejournal & tbl_supplier_info
+  - Usage: Used specifically in the PrintSalesInvoice function (which appears to handle some purchase-side logic or returns).
+  - Operations: INSERT , SELECT , UPDATE
+
+
+
+TRANSMITTAL RECEIPT 
+### Primary Tables
+- tbl_transmittal
+  - Usage: The main table for storing transmittal receipt records.
+  - Operations: INSERT , SELECT
+  - Context: Records are inserted here upon submission, and searched/retrieved for reporting.
+- tbl_invlist
+  - Usage: The master inventory list for standard items.
+  - Operations: SELECT , UPDATE , DELETE
+  - Context: Checked for stock availability when adding items to a transmittal, and updated (quantity reduced) or deleted (if quantity becomes 0) upon submission.
+- tbl_invlistconsign
+  - Usage: Inventory list for consignment items.
+  - Operations: SELECT , UPDATE , DELETE
+  - Context: Similar to tbl_invlist but for consignment stock.
+### Configuration & Helper Tables
+- tbl_configuration
+  - Usage: Stores system-wide settings like the current transmittal number and organization name.
+  - Operations: SELECT , UPDATE
+  - Context: Used to generate the next unique Transmittal Number (e.g., "TM...").
+- tbl_transaction
+  - Usage: Temporary table for current session transactions.
+  - Operations: DELETE
+  - Context: Cleared upon initialization ( DELETE FROM tbl_transaction ) to ensure a fresh state, though less heavily used than in outgoinginventory.php .
+- tbl_maintenance
+  - Usage: Source for branch list.
+  - Operations: SELECT
+- tbl_prodtype
+  - Usage: Source for product types.
+  - Operations: SELECT
+- tbl_clientlist
+  - Usage: Source for customer types.
+  - Operations: SELECT
+### Financial Tables (via shared functions)
+- tbl_inventoryin
+  - Usage: Source for incoming inventory data during PrintSalesInvoice (shared logic).
+  - Operations: SELECT , UPDATE
+- tbl_purchasejournal
+  - Usage: Records purchase journal entries.
+  - Operations: INSERT , UPDATE
+- tbl_supplier_info
+  - Usage: Source for supplier TIN and address details.
+  - Operations: SELECT
+
+
+Consignment
+### Primary Inventory Tables
+- tbl_invlistconsign
+  - Usage: The main table for storing consignment inventory records.
+  - Operations: INSERT , SELECT
+  - Context: Records are inserted here upon successful submission of a consignment.
+- tbl_invlist
+  - Usage: The master inventory list for standard items.
+  - Operations: SELECT , UPDATE
+  - Context: Checked for original item details and updated (quantity deducted) when an item is moved to consignment.
+### Configuration & Helper Tables
+- tbl_maintenance
+  - Usage: Source for branch list.
+  - Operations: SELECT
+  - Context: Used to populate the "Branch" dropdown (where ItemType='BRANCH' ).
+- tbl_prodtype (Implied)
+  - Usage: Although not explicitly queried in the provided snippet, the allTypes variable suggests a source for product types, likely tbl_prodtype or derived from tbl_invlist .
+  - Operations: SELECT (from tbl_invlist in the snippet)
+### Note on Implementation
+- The consignment process heavily relies on moving data from tbl_invlist (original stock) to tbl_invlistconsign (consignment stock).
+- The logic ensures that the quantity is deducted from the source branch ( tbl_invlist ) before being added to the consignment branch ( tbl_invlistconsign ).
 
